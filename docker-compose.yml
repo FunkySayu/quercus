@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend/data:/data
+    environment:
+      - CSV_PATH=/data/trees.csv
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    ports:
+      - "49821:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

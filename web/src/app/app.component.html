@@ -1,0 +1,21 @@
+<div class="app-shell">
+  <mat-toolbar color="primary">
+    <a class="brand-link" routerLink="/">
+      <mat-icon>park</mat-icon>
+      <span>Localisation des chênes</span>
+    </a>
+    <span style="flex: 1 1 auto"></span>
+    <a mat-button routerLink="/saisie" routerLinkActive="active-link">
+      <mat-icon>add_location_alt</mat-icon>
+      Saisie
+    </a>
+    <a mat-button routerLink="/liste" routerLinkActive="active-link">
+      <mat-icon>list</mat-icon>
+      Liste
+    </a>
+  </mat-toolbar>
+
+  <div class="app-content">
+    <router-outlet></router-outlet>
+  </div>
+</div>

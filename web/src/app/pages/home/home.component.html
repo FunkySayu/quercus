@@ -1,0 +1,14 @@
+<div class="map-page">
+  <div class="map-container" #mapContainer></div>
+
+  @if (loading()) {
+    <div class="map-overlay">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  } @else if (error()) {
+    <div class="map-overlay map-overlay-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+</div>
