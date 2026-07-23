@@ -52,12 +52,37 @@
       <form [formGroup]="form" (ngSubmit)="submit()">
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Numéro de référence</mat-label>
-          <input matInput formControlName="reference" placeholder="ex : REF-042" />
+          <input
+            matInput
+            formControlName="reference"
+            placeholder="ex : 42"
+            [matAutocomplete]="referenceAuto"
+          />
+          <mat-autocomplete
+            #referenceAuto="matAutocomplete"
+            (optionSelected)="onReferenceSelected($event)"
+          >
+            @for (option of referenceOptions(); track option.reference) {
+              <mat-option [value]="option.reference">{{ speciesLabel(option) }}</mat-option>
+            }
+          </mat-autocomplete>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nom de l'arbre</mat-label>
-          <input matInput formControlName="name" placeholder="ex : Grand chêne du parc" />
+          <input
+            matInput
+            formControlName="name"
+            placeholder="ex : Chêne de Hongrie"
+            [matAutocomplete]="nameAuto"
+          />
+          <mat-autocomplete #nameAuto="matAutocomplete" (optionSelected)="onNameSelected($event)">
+            @for (option of nameOptions(); track option.reference) {
+              <mat-option [value]="option.nom_usage || option.nom_scientifique">
+                {{ speciesLabel(option) }}
+              </mat-option>
+            }
+          </mat-autocomplete>
         </mat-form-field>
 
         @if (form.invalid && form.touched) {

@@ -1,6 +1,8 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors } from '@angular/forms';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,8 +10,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Species } from '../../models/species.model';
 import { GeolocationService } from '../../services/geolocation.service';
+import { SpeciesService } from '../../services/species.service';
 import { TreeService } from '../../services/tree.service';
+
+const MAX_AUTOCOMPLETE_OPTIONS = 20;
 
 function referenceOrNameValidator(control: AbstractControl): ValidationErrors | null {
   const reference = (control.get('reference')?.value ?? '').trim();
@@ -30,6 +36,7 @@ type AccuracyLevel = 'good' | 'medium' | 'bad';
   imports: [
     DecimalPipe,
     ReactiveFormsModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
@@ -82,12 +89,74 @@ export class EntryComponent implements OnInit, OnDestroy {
     { validators: referenceOrNameValidator }
   );
 
+  readonly species = toSignal(this.speciesService.list(), { initialValue: [] as Species[] });
+
+  private readonly referenceQuery = toSignal(this.form.controls.reference.valueChanges, {
+    initialValue: '',
+  });
+  private readonly nameQuery = toSignal(this.form.controls.name.valueChanges, {
+    initialValue: '',
+  });
+
+  /** Suggestions du catalogue quercitum filtrées sur le numéro de référence saisi. */
+  readonly referenceOptions = computed(() => {
+    const query = (this.referenceQuery() ?? '').trim().toLowerCase();
+    const options = query
+      ? this.species().filter((entry) => entry.reference.toLowerCase().includes(query))
+      : this.species();
+    return options.slice(0, MAX_AUTOCOMPLETE_OPTIONS);
+  });
+
+  /** Suggestions du catalogue quercitum filtrées sur le nom saisi. */
+  readonly nameOptions = computed(() => {
+    const query = (this.nameQuery() ?? '').trim().toLowerCase();
+    if (!query) return [];
+    return this.species()
+      .filter(
+        (entry) =>
+          entry.nom_scientifique.toLowerCase().includes(query) ||
+          entry.nom_usage.toLowerCase().includes(query)
+      )
+      .slice(0, MAX_AUTOCOMPLETE_OPTIONS);
+  });
+
   constructor(
     private readonly fb: FormBuilder,
     private readonly geolocationService: GeolocationService,
+    private readonly speciesService: SpeciesService,
     private readonly treeService: TreeService,
     private readonly snackBar: MatSnackBar
   ) {}
+
+  speciesLabel(species: Species): string {
+    const label = species.nom_usage || species.nom_scientifique || 'Nom inconnu';
+    return `${species.reference} — ${label}`;
+  }
+
+  /** Sélection d'une entrée existante via son numéro de référence : on synchronise le nom. */
+  onReferenceSelected(event: MatAutocompleteSelectedEvent): void {
+    const species = this.species().find((entry) => entry.reference === event.option.value);
+    if (species) {
+      this.syncFromSpecies(species);
+    }
+  }
+
+  /** Sélection d'une entrée existante via son nom : on synchronise la référence. */
+  onNameSelected(event: MatAutocompleteSelectedEvent): void {
+    const species = this.species().find(
+      (entry) => (entry.nom_usage || entry.nom_scientifique) === event.option.value
+    );
+    if (species) {
+      this.syncFromSpecies(species);
+    }
+  }
+
+  private syncFromSpecies(species: Species): void {
+    this.form.patchValue({
+      reference: species.reference,
+      name: species.nom_usage || species.nom_scientifique,
+    });
+  }
 
   ngOnInit(): void {
     this.clockIntervalId = setInterval(() => this.now.set(Date.now()), CLOCK_TICK_MS);

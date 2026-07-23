@@ -6,6 +6,12 @@ export interface Tree {
   reference: string | null;
   name: string | null;
   created_at: string;
+  nom_scientifique: string | null;
+  nom_usage: string | null;
+  origine: string | null;
+  statut_uicn: string | null;
+  wikipedia_url: string | null;
+  description: string | null;
 }
 
 export interface CreateTreePayload {

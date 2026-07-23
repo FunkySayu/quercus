@@ -17,9 +17,26 @@
     <div class="status-row">Aucun arbre enregistré pour le moment.</div>
   } @else {
     <table mat-table [dataSource]="trees()" class="mat-elevation-z1">
-      <ng-container matColumnDef="identifiant">
-        <th mat-header-cell *matHeaderCellDef>Référence / Nom</th>
-        <td mat-cell *matCellDef="let tree">{{ tree.reference || tree.name }}</td>
+      <ng-container matColumnDef="reference">
+        <th mat-header-cell *matHeaderCellDef>Référence</th>
+        <td mat-cell *matCellDef="let tree">{{ tree.reference || '—' }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="espece">
+        <th mat-header-cell *matHeaderCellDef>Espèce</th>
+        <td mat-cell *matCellDef="let tree">
+          @if (tree.nom_usage || tree.nom_scientifique || tree.name) {
+            @if (tree.wikipedia_url) {
+              <a [href]="tree.wikipedia_url" target="_blank" rel="noopener">
+                {{ tree.nom_usage || tree.nom_scientifique || tree.name }}
+              </a>
+            } @else {
+              {{ tree.nom_usage || tree.nom_scientifique || tree.name }}
+            }
+          } @else {
+            —
+          }
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="coordonnees">

@@ -26,7 +26,7 @@ export class ListingComponent implements OnInit {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
-  readonly displayedColumns = ['identifiant', 'coordonnees', 'precision', 'date'];
+  readonly displayedColumns = ['reference', 'espece', 'coordonnees', 'precision', 'date'];
 
   constructor(private readonly treeService: TreeService) {}
 

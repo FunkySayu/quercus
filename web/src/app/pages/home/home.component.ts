@@ -87,12 +87,17 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private popupContent(tree: Tree): string {
-    const title = tree.reference || tree.name || 'Arbre';
-    const subtitle = tree.reference && tree.name ? tree.name : null;
+    const speciesLabel = tree.nom_usage || tree.nom_scientifique || tree.name;
+    const title = tree.reference || speciesLabel || 'Arbre';
+    const subtitle = tree.reference && speciesLabel ? speciesLabel : null;
     const date = new Date(tree.created_at).toLocaleDateString('fr-FR');
+    const wikipediaLink = tree.wikipedia_url
+      ? `<br><a href="${tree.wikipedia_url}" target="_blank" rel="noopener">Voir sur Wikipédia</a>`
+      : '';
     return `
       <strong>${this.escapeHtml(title)}</strong>
       ${subtitle ? `<br>${this.escapeHtml(subtitle)}` : ''}
+      ${wikipediaLink}
       <br>Précision : ±${Math.round(tree.accuracy)} m
       <br>Saisi le ${date}
     `;

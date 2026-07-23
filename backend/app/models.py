@@ -3,6 +3,16 @@ from typing import Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class Species(BaseModel):
+    reference: str
+    nom_scientifique: str = ""
+    nom_usage: str = ""
+    origine: str = ""
+    statut_uicn: str = ""
+    wikipedia_url: str = ""
+    description: str = ""
+
+
 class TreeCreate(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
@@ -28,3 +38,9 @@ class TreeCreate(BaseModel):
 class Tree(TreeCreate):
     id: str
     created_at: str
+    nom_scientifique: Optional[str] = None
+    nom_usage: Optional[str] = None
+    origine: Optional[str] = None
+    statut_uicn: Optional[str] = None
+    wikipedia_url: Optional[str] = None
+    description: Optional[str] = None
