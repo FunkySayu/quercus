@@ -30,14 +30,28 @@
       </mat-form-field>
     </div>
 
-    <a mat-button routerLink="/saisie" routerLinkActive="active-link">
-      <mat-icon>add_location_alt</mat-icon>
-      Saisie
-    </a>
+    @if (auth.authenticated()) {
+      <a mat-button routerLink="/saisie" routerLinkActive="active-link">
+        <mat-icon>add_location_alt</mat-icon>
+        Saisie
+      </a>
+    }
     <a mat-button routerLink="/liste" routerLinkActive="active-link">
       <mat-icon>list</mat-icon>
       Liste
     </a>
+
+    @if (auth.authenticated() === true) {
+      <button mat-button (click)="auth.logout()">
+        <mat-icon>logout</mat-icon>
+        Déconnexion
+      </button>
+    } @else if (auth.authenticated() === false) {
+      <button mat-button (click)="auth.login()">
+        <mat-icon>login</mat-icon>
+        Connexion
+      </button>
+    }
   </mat-toolbar>
 
   <div class="app-content">

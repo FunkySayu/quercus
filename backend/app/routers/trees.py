@@ -1,7 +1,8 @@
 from typing import List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from ..auth import require_user
 from ..models import Tree, TreeCreate
 from .. import storage
 
@@ -14,5 +15,5 @@ def list_trees() -> List[Tree]:
 
 
 @router.post("", response_model=Tree, status_code=201)
-def create_tree(payload: TreeCreate) -> Tree:
+def create_tree(payload: TreeCreate, user: dict = Depends(require_user)) -> Tree:
     return storage.append_tree(payload)

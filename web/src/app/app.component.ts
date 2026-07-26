@@ -9,6 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { GeolocationService } from './services/geolocation.service';
 import { TreeSearchService } from './services/tree-search.service';
+import { AuthService } from './services/auth.service';
 
 @Component({
   selector: 'app-root',
@@ -30,6 +31,7 @@ import { TreeSearchService } from './services/tree-search.service';
 })
 export class AppComponent implements OnInit, OnDestroy {
   protected readonly search = inject(TreeSearchService);
+  protected readonly auth = inject(AuthService);
 
   constructor(private readonly geolocationService: GeolocationService) {}
 
@@ -37,6 +39,7 @@ export class AppComponent implements OnInit, OnDestroy {
     // Démarre le ping GPS dès l'ouverture de l'app pour que la précision ait le
     // temps de se stabiliser avant que l'utilisateur n'atteigne le formulaire de saisie.
     this.geolocationService.start();
+    this.auth.refresh();
   }
 
   ngOnDestroy(): void {

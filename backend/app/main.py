@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import species, trees
+from .routers import auth, species, trees
 
 app = FastAPI(title="Localisation des chênes")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 
 app.include_router(trees.router)
 app.include_router(species.router)
+app.include_router(auth.router)
 
 
 @app.get("/api/health")

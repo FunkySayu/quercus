@@ -3,6 +3,8 @@ services:
     build: ./backend
     volumes:
       - ./backend/data:/data
+    env_file:
+      - .env
     environment:
       - CSV_PATH=/data/trees.csv
     restart: unless-stopped
