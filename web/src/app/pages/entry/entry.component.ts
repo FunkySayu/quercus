@@ -128,11 +128,6 @@ export class EntryComponent implements OnInit, OnDestroy {
     private readonly snackBar: MatSnackBar
   ) {}
 
-  speciesLabel(species: Species): string {
-    const label = species.nom_usage || species.nom_scientifique || 'Nom inconnu';
-    return `${species.reference} — ${label}`;
-  }
-
   /** Sélection d'une entrée existante via son numéro de référence : on synchronise le nom. */
   onReferenceSelected(event: MatAutocompleteSelectedEvent): void {
     const species = this.species().find((entry) => entry.reference === event.option.value);

@@ -63,7 +63,10 @@
             (optionSelected)="onReferenceSelected($event)"
           >
             @for (option of referenceOptions(); track option.reference) {
-              <mat-option [value]="option.reference">{{ speciesLabel(option) }}</mat-option>
+              <mat-option class="search-option" [value]="option.reference">
+                <strong>{{ option.nom_scientifique }}</strong><br />
+                {{ option.nom_usage }} ({{ option.reference }})
+              </mat-option>
             }
           </mat-autocomplete>
         </mat-form-field>
@@ -78,8 +81,9 @@
           />
           <mat-autocomplete #nameAuto="matAutocomplete" (optionSelected)="onNameSelected($event)">
             @for (option of nameOptions(); track option.reference) {
-              <mat-option [value]="option.nom_usage || option.nom_scientifique">
-                {{ speciesLabel(option) }}
+              <mat-option class="search-option" [value]="option.nom_usage || option.nom_scientifique">
+                <strong>{{ option.nom_scientifique }}</strong><br />
+                {{ option.nom_usage }} ({{ option.reference }})
               </mat-option>
             }
           </mat-autocomplete>

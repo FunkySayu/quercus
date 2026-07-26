@@ -23,6 +23,7 @@ SPECIES_FIELDNAMES = [
     "statut_uicn",
     "wikipedia_url",
     "description",
+    "continent",
 ]
 
 _lock = threading.Lock()
@@ -53,6 +54,7 @@ def append_tree(payload: TreeCreate) -> Tree:
         statut_uicn=species.statut_uicn or None,
         wikipedia_url=species.wikipedia_url or None,
         description=species.description or None,
+        continent=species.continent or None,
     )
 
     with _lock:
@@ -101,6 +103,7 @@ def list_trees() -> List[Tree]:
                 statut_uicn=(species.statut_uicn or None) if species else None,
                 wikipedia_url=(species.wikipedia_url or None) if species else None,
                 description=(species.description or None) if species else None,
+                continent=(species.continent or None) if species else None,
             )
         )
     trees.sort(key=lambda tree: tree.created_at, reverse=True)

@@ -12,6 +12,7 @@ export interface Tree {
   statut_uicn: string | null;
   wikipedia_url: string | null;
   description: string | null;
+  continent: string | null;
 }
 
 export interface CreateTreePayload {

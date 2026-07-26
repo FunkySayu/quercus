@@ -6,4 +6,5 @@ export interface Species {
   statut_uicn: string;
   wikipedia_url: string;
   description: string;
+  continent: string;
 }

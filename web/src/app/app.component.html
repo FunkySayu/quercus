@@ -4,7 +4,32 @@
       <mat-icon>park</mat-icon>
       <span>Localisation des chênes</span>
     </a>
-    <span style="flex: 1 1 auto"></span>
+
+    <div class="toolbar-search">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search-field">
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          [formControl]="search.searchControl"
+          placeholder="Rechercher un arbre…"
+          [matAutocomplete]="searchAuto"
+        />
+        @if (search.searchControl.value) {
+          <button matSuffix mat-icon-button type="button" aria-label="Effacer" (click)="search.clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+        <mat-autocomplete #searchAuto="matAutocomplete">
+          @for (option of search.searchOptions(); track option.key) {
+            <mat-option class="search-option" [value]="option.value">
+              <strong>{{ option.scientificName }}</strong><br />
+              {{ option.commonName }} ({{ option.reference }})
+            </mat-option>
+          }
+        </mat-autocomplete>
+      </mat-form-field>
+    </div>
+
     <a mat-button routerLink="/saisie" routerLinkActive="active-link">
       <mat-icon>add_location_alt</mat-icon>
       Saisie

@@ -11,6 +11,7 @@ class Species(BaseModel):
     statut_uicn: str = ""
     wikipedia_url: str = ""
     description: str = ""
+    continent: str = ""
 
 
 class TreeCreate(BaseModel):
@@ -44,3 +45,4 @@ class Tree(TreeCreate):
     statut_uicn: Optional[str] = None
     wikipedia_url: Optional[str] = None
     description: Optional[str] = None
+    continent: Optional[str] = None
