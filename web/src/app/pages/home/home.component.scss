@@ -84,6 +84,74 @@
   line-height: 1.5;
 }
 
+.uicn-chip-wrapper {
+  position: relative;
+  display: inline-block;
+  outline: none;
+
+  &:hover .uicn-hovercard,
+  &:focus-visible .uicn-hovercard,
+  &:focus-within .uicn-hovercard {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}
+
+.uicn-chip {
+  // inline-flex synthétise sa baseline sur le bord bas de la boîte plutôt que sur
+  // celle du texte "LC" qu'elle contient, ce qui la décale visuellement par rapport
+  // au reste du paragraphe. inline-block + vertical-align: baseline (par défaut)
+  // aligne correctement sur la ligne de base réelle du texte.
+  display: inline-block;
+  vertical-align: baseline;
+  padding: 2px 10px;
+  border-radius: 999px;
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: default;
+}
+
+.uicn-hovercard {
+  position: absolute;
+  z-index: 1001;
+  bottom: calc(100% + 8px);
+  left: 0;
+  width: 260px;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: #262626;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+  pointer-events: none;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.85);
+  }
+}
+
+.tree-panel-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .tree-panel-wikipedia {
   display: inline-flex;
   align-items: center;

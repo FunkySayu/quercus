@@ -15,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as L from 'leaflet';
 import { Tree } from '../../models/tree.model';
+import { resolveUicnStatus, UicnStatus } from '../../models/uicn-status';
 import { TreeSearchService } from '../../services/tree-search.service';
 
 // Les icônes par défaut de Leaflet référencent des images relatives à son propre CSS,
@@ -77,6 +78,31 @@ function continentPinIcon(continent: string | null | undefined): L.DivIcon {
   return pinIcon((continent && CONTINENT_COLORS[continent]) || DEFAULT_PIN_COLOR);
 }
 
+/** Reproduit le tri des références du catalogue (voir `storage._species_sort_key`
+ * côté backend) : numérique puis Bis avant Ter, pour que Précédent/Suivant suivent
+ * l'ordre du quercitum plutôt qu'un tri alphabétique brut ("10" avant "9"). */
+function referenceSortKey(reference: string): [number, number, string] {
+  const match = /^(\d+)\s*(Bis|Ter)?$/i.exec(reference.trim());
+  if (!match) {
+    return [Number.MAX_SAFE_INTEGER, 0, reference];
+  }
+  const suffix = (match[2] || '').toUpperCase();
+  const suffixRank = suffix === 'BIS' ? 1 : suffix === 'TER' ? 2 : 0;
+  return [Number(match[1]), suffixRank, ''];
+}
+
+function compareReferences(a: string, b: string): number {
+  const [aNumber, aSuffix, aFallback] = referenceSortKey(a);
+  const [bNumber, bSuffix, bFallback] = referenceSortKey(b);
+  if (aNumber !== bNumber) {
+    return aNumber - bNumber;
+  }
+  if (aSuffix !== bSuffix) {
+    return aSuffix - bSuffix;
+  }
+  return aFallback.localeCompare(bFallback, 'fr');
+}
+
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -98,6 +124,20 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Fiche mise en avant (recherche en cours, ou clic sur un pin qui alimente la
   // recherche) : affichée en pleine opacité sur la carte et dans le panneau latéral.
   readonly selectedTree = computed(() => this.search.selectedTree());
+
+  /** Références distinctes des arbres chargés, triées comme le catalogue — sert de
+   * piste de navigation Précédent/Suivant dans le panneau de détail. */
+  readonly sortedReferences = computed(() => {
+    const refs = new Set<string>();
+    for (const tree of this.search.trees()) {
+      if (tree.reference) {
+        refs.add(tree.reference);
+      }
+    }
+    return Array.from(refs).sort(compareReferences);
+  });
+
+  readonly canNavigate = computed(() => this.sortedReferences().length > 1);
 
   private map: L.Map | null = null;
   private markersLayer: L.LayerGroup | null = null;
@@ -165,6 +205,28 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   closePanel(): void {
     this.search.clearSearch();
+  }
+
+  /** Passe à la fiche précédente/suivante du catalogue, en bouclant aux extrémités. */
+  navigate(step: 1 | -1): void {
+    const current = this.selectedTree();
+    if (!current?.reference) {
+      return;
+    }
+    const refs = this.sortedReferences();
+    const index = refs.indexOf(current.reference);
+    if (index === -1) {
+      return;
+    }
+    const nextReference = refs[(index + step + refs.length) % refs.length];
+    const nextTree = this.search.trees().find((tree) => tree.reference === nextReference);
+    if (nextTree) {
+      this.search.selectTree(nextTree);
+    }
+  }
+
+  uicnStatus(code: string | null | undefined): UicnStatus | null {
+    return resolveUicnStatus(code);
   }
 
   /** Titre du panneau de détail : le nom scientifique prime, avec repli sur les autres champs saisis. */

@@ -9,6 +9,8 @@ class Species(BaseModel):
     nom_usage: str = ""
     origine: str = ""
     statut_uicn: str = ""
+    statut_uicn_annee: str = ""
+    statut_uicn_url: str = ""
     wikipedia_url: str = ""
     description: str = ""
     continent: str = ""
@@ -43,6 +45,8 @@ class Tree(TreeCreate):
     nom_usage: Optional[str] = None
     origine: Optional[str] = None
     statut_uicn: Optional[str] = None
+    statut_uicn_annee: Optional[str] = None
+    statut_uicn_url: Optional[str] = None
     wikipedia_url: Optional[str] = None
     description: Optional[str] = None
     continent: Optional[str] = None

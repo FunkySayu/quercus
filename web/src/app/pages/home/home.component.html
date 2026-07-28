@@ -21,7 +21,7 @@
             <p class="tree-panel-subtitle">{{ treeSubtitle(tree) }}</p>
           }
         </div>
-        <button mat-button type="button" (click)="closePanel()">
+        <button mat-stroked-button type="button" (click)="closePanel()">
           <mat-icon>close</mat-icon>
           Fermer
         </button>
@@ -43,9 +43,26 @@
           <dt>Continent</dt>
           <dd>{{ tree.continent }}</dd>
         }
-        @if (tree.statut_uicn) {
+        @if (uicnStatus(tree.statut_uicn); as status) {
           <dt>Statut UICN</dt>
-          <dd>{{ tree.statut_uicn }}</dd>
+          <dd>
+            <span class="uicn-chip-wrapper" tabindex="0">
+              <span class="uicn-chip" [style.background-color]="status.color">{{ status.code }}</span>
+              <span class="uicn-hovercard" role="tooltip">
+                <strong>{{ status.label }}</strong>
+                <p>{{ status.description }}</p>
+              </span>
+            </span>
+            &nbsp;
+            @if (tree.statut_uicn_url) {
+              <a
+                [href]="tree.statut_uicn_url"
+                target="_blank"
+                rel="noopener"
+                (click)="$event.stopPropagation()"
+              >{{ tree.statut_uicn_annee ? tree.statut_uicn_annee : 'Dernière évaluation' }}</a>
+            }
+          </dd>
         }
       </dl>
 
@@ -67,6 +84,19 @@
         <dt>Saisi le</dt>
         <dd>{{ tree.created_at | date: 'dd/MM/yyyy HH:mm' }}</dd>
       </dl>
+
+      @if (canNavigate()) {
+        <div class="tree-panel-nav">
+          <button mat-stroked-button type="button" (click)="navigate(-1)">
+            <mat-icon>chevron_left</mat-icon>
+            Précédent
+          </button>
+          <button mat-stroked-button type="button" (click)="navigate(1)">
+            Suivant
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      }
     </div>
   }
 </div>

@@ -78,9 +78,20 @@ export class TreeSearchService {
 
   readonly matchCount = computed(() => this.filteredTrees().length);
 
-  /** Fiche mise en avant sur la carte (pin en pleine opacité + panneau latéral) :
-   * le premier arbre trouvé par la recherche courante, ou aucun si le champ est vide. */
+  /** Sélection explicite (clic sur un pin, navigation Précédent/Suivant) : prime sur la
+   * recherche texte tant qu'elle n'a pas été invalidée par une nouvelle saisie (voir
+   * constructor). Nécessaire car `selectTree` ne peut pas se contenter de réinjecter le
+   * libellé de l'arbre dans la recherche : deux fiches peuvent partager un sous-texte
+   * (ex. les références "1" et "31" via la recherche par sous-chaîne), ce qui ferait
+   * retomber `filteredTrees()[0]` sur la mauvaise fiche. */
+  private readonly selectedTreeId = signal<string | null>(null);
+
+  /** Fiche mise en avant sur la carte (pin en pleine opacité + panneau latéral). */
   readonly selectedTree = computed<Tree | null>(() => {
+    const id = this.selectedTreeId();
+    if (id) {
+      return this.trees().find((tree) => tree.id === id) ?? null;
+    }
     if (!normalize(this.searchQuery())) {
       return null;
     }
@@ -110,15 +121,23 @@ export class TreeSearchService {
 
   constructor(private readonly treeService: TreeService) {
     this.reload();
+    // Toute saisie réelle dans la recherche invalide la sélection explicite, pour lui
+    // rendre la main sur `selectedTree`. `selectTree()` met à jour le champ avec
+    // `emitEvent: false` : ce flux ne s'y déclenche donc que sur une vraie saisie.
+    this.searchControl.valueChanges.subscribe(() => this.selectedTreeId.set(null));
   }
 
   clearSearch(): void {
+    this.selectedTreeId.set(null);
     this.searchControl.setValue('');
   }
 
-  /** Fixe la recherche sur la fiche de l'arbre donné (ex. clic sur un pin de la carte). */
+  /** Fixe la sélection sur la fiche de l'arbre donné (ex. clic sur un pin de la carte,
+   * navigation Précédent/Suivant), et reflète son libellé dans le champ de recherche
+   * sans relancer la recherche floue (voir `selectedTreeId`). */
   selectTree(tree: Tree): void {
-    this.searchControl.setValue(treeLabel(tree));
+    this.selectedTreeId.set(tree.id);
+    this.searchControl.setValue(treeLabel(tree), { emitEvent: false });
   }
 
   /** Recharge la liste des arbres depuis l'API (ex. à chaque visite de la carte, pour rester à jour). */
