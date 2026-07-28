@@ -78,6 +78,15 @@ export class TreeSearchService {
 
   readonly matchCount = computed(() => this.filteredTrees().length);
 
+  /** Fiche mise en avant sur la carte (pin en pleine opacité + panneau latéral) :
+   * le premier arbre trouvé par la recherche courante, ou aucun si le champ est vide. */
+  readonly selectedTree = computed<Tree | null>(() => {
+    if (!normalize(this.searchQuery())) {
+      return null;
+    }
+    return this.filteredTrees()[0] ?? null;
+  });
+
   /** Suggestions d'autocomplétion : fiches distinctes (par référence) des arbres chargés, filtrées sur la saisie. */
   readonly searchOptions = computed(() => {
     const byKey = new Map<string, TreeSearchOption>();
@@ -105,6 +114,11 @@ export class TreeSearchService {
 
   clearSearch(): void {
     this.searchControl.setValue('');
+  }
+
+  /** Fixe la recherche sur la fiche de l'arbre donné (ex. clic sur un pin de la carte). */
+  selectTree(tree: Tree): void {
+    this.searchControl.setValue(treeLabel(tree));
   }
 
   /** Recharge la liste des arbres depuis l'API (ex. à chaque visite de la carte, pour rester à jour). */

@@ -8,7 +8,7 @@ import {
   computed,
   effect,
   inject,
-  signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -90,20 +90,23 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly search = inject(TreeSearchService);
 
   // La barre de recherche vit dans la toolbar (voir app.component) ; la carte se contente
-  // de lire l'état partagé pour filtrer ses pins et afficher le chargement/les erreurs.
+  // de lire l'état partagé pour mettre en avant les pins correspondants et afficher le
+  // chargement/les erreurs.
   readonly loading = computed(() => this.search.loading());
   readonly error = computed(() => this.search.error());
 
-  // Arbre sélectionné (clic sur un pin), affiché dans le panneau latéral de détail.
-  readonly selectedTree = signal<Tree | null>(null);
+  // Fiche mise en avant (recherche en cours, ou clic sur un pin qui alimente la
+  // recherche) : affichée en pleine opacité sur la carte et dans le panneau latéral.
+  readonly selectedTree = computed(() => this.search.selectedTree());
 
   private map: L.Map | null = null;
   private markersLayer: L.LayerGroup | null = null;
   private readonly markersByTreeId = new Map<string, L.Marker>();
+  private readonly treesById = new Map<string, Tree>();
 
   constructor() {
     effect(() => this.plotTrees(this.search.trees()));
-    effect(() => this.applyFilter(this.search.filteredTrees()));
+    effect(() => this.applyHighlight(this.selectedTree()));
   }
 
   ngOnInit(): void {
@@ -122,49 +125,46 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.map = null;
   }
 
+  /** Trace tous les pins (toujours affichés) et recadre la carte dessus. */
   private plotTrees(trees: Tree[]): void {
-    if (!this.markersLayer) {
+    if (!this.map || !this.markersLayer) {
       return;
     }
     this.markersLayer.clearLayers();
     this.markersByTreeId.clear();
+    this.treesById.clear();
 
     for (const tree of trees) {
       const marker = L.marker([tree.latitude, tree.longitude], {
         icon: continentPinIcon(tree.continent),
-      }).on('click', () => this.selectedTree.set(tree));
+      }).on('click', () => this.search.selectTree(tree));
+      marker.addTo(this.markersLayer);
       this.markersByTreeId.set(tree.id, marker);
+      this.treesById.set(tree.id, tree);
     }
+    // Lu hors suivi de dépendances : sinon la recherche (via selectedTree) deviendrait
+    // une dépendance de CET effet, et rejouerait tout plotTrees (donc fitBounds) à
+    // chaque changement de recherche au lieu du seul effet d'estompage.
+    untracked(() => this.applyHighlight(this.selectedTree()));
+
+    if (trees.length === 0) {
+      return;
+    }
+    const bounds = L.featureGroup(Array.from(this.markersByTreeId.values())).getBounds();
+    this.map.fitBounds(bounds, { padding: [32, 32], maxZoom: 18 });
   }
 
-  /** Affiche uniquement les pins correspondant au filtre courant et recadre la carte dessus. */
-  private applyFilter(filtered: Tree[]): void {
-    if (!this.map || !this.markersLayer) {
-      return;
-    }
-
-    const visibleIds = new Set(filtered.map((tree) => tree.id));
+  /** Estompe les pins des espèces différentes de celle mise en avant par la recherche. */
+  private applyHighlight(selected: Tree | null): void {
     this.markersByTreeId.forEach((marker, id) => {
-      const shouldShow = visibleIds.has(id);
-      const isShown = this.markersLayer!.hasLayer(marker);
-      if (shouldShow && !isShown) {
-        this.markersLayer!.addLayer(marker);
-      } else if (!shouldShow && isShown) {
-        this.markersLayer!.removeLayer(marker);
-      }
+      const tree = this.treesById.get(id);
+      const isSelected = !selected || tree?.reference === selected.reference;
+      marker.getElement()?.classList.toggle('continent-pin--lowlight', !isSelected);
     });
-
-    if (filtered.length === 0) {
-      return;
-    }
-    const bounds = L.featureGroup(
-      filtered.map((tree) => this.markersByTreeId.get(tree.id)!).filter(Boolean)
-    ).getBounds();
-    this.map.flyToBounds(bounds, { padding: [32, 32], maxZoom: 18 });
   }
 
   closePanel(): void {
-    this.selectedTree.set(null);
+    this.search.clearSearch();
   }
 
   /** Titre du panneau de détail : le nom scientifique prime, avec repli sur les autres champs saisis. */

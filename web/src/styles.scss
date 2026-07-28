@@ -21,6 +21,16 @@ body {
 .continent-pin {
   background: transparent;
   border: none;
+  overflow: visible;
+  stroke-width: 2;
+
+  &--lowlight {
+    opacity: 0.3;
+  }
+
+  svg {
+    overflow: visible;
+  }
 }
 
 // Options d'autocomplétion sur deux lignes (nom scientifique en gras, puis nom
