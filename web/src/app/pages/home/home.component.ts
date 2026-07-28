@@ -8,6 +8,7 @@ import {
   computed,
   effect,
   inject,
+  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -141,6 +142,11 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   readonly canNavigate = computed(() => this.sortedReferences().length > 1);
 
+  /** Sur mobile, le panneau de détail s'ouvre d'abord replié (titre/sous-titre
+   * seuls) : ce signal contrôle le "voir plus" qui déplie le reste des infos.
+   * Sans effet sur desktop, où tout est toujours affiché (voir home.component.scss). */
+  readonly mobilePanelExpanded = signal(false);
+
   private map: L.Map | null = null;
   private markersLayer: L.LayerGroup | null = null;
   private readonly markersByTreeId = new Map<string, L.Marker>();
@@ -153,6 +159,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Effet séparé de plotTrees : la position de l'utilisateur ne doit jamais
     // participer au recadrage (fitBounds) de la carte sur les arbres.
     effect(() => this.plotUserLocation(this.geolocation.currentReading()));
+    // Toute nouvelle sélection (ou fermeture) repart du panneau replié sur mobile.
+    effect(
+      () => {
+        this.selectedTree();
+        this.mobilePanelExpanded.set(false);
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   ngOnInit(): void {
@@ -239,6 +253,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   closePanel(): void {
     this.search.clearSearch();
+  }
+
+  toggleMobilePanel(): void {
+    this.mobilePanelExpanded.update((expanded) => !expanded);
   }
 
   /** Passe à la fiche précédente/suivante du catalogue, en bouclant aux extrémités. */

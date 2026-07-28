@@ -64,3 +64,26 @@
     border-color: rgba(255, 255, 255, 0.4) !important;
   }
 }
+
+// Sur desktop, liens texte classiques (mat-button) ; la variante mobile
+// (mat-icon-button) reste cachée. mat-button et mat-icon-button appliquent des
+// styles/tailles différents, donc on bascule entre deux éléments plutôt que de
+// masquer un libellé à l'intérieur d'un mat-button (rendu bancal en icône seule).
+.nav-link-mobile {
+  display: none;
+}
+
+// Toolbar resserrée sur mobile : on garde les icônes (repères visuels suffisants
+// vu le peu de liens) mais on retire le titre et bascule les liens sur la variante
+// mat-icon-button pour laisser la place à la barre de recherche, l'élément
+// prioritaire de la toolbar sur petit écran.
+@media (max-width: 599px) {
+  .brand-title,
+  .nav-link-desktop {
+    display: none;
+  }
+
+  .nav-link-mobile {
+    display: inline-block;
+  }
+}

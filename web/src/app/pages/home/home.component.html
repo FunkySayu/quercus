@@ -13,7 +13,7 @@
   }
 
   @if (selectedTree(); as tree) {
-    <div class="tree-panel">
+    <div class="tree-panel" [class.tree-panel--expanded]="mobilePanelExpanded()">
       <div class="tree-panel-header">
         <div>
           <h2>{{ treeTitle(tree) }}</h2>
@@ -27,6 +27,12 @@
         </button>
       </div>
 
+      <button mat-button type="button" class="tree-panel-mobile-toggle" (click)="toggleMobilePanel()">
+        {{ mobilePanelExpanded() ? 'Voir moins' : 'Voir plus' }}
+        <mat-icon>{{ mobilePanelExpanded() ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+
+      <div class="tree-panel-extra">
       <div class="tree-panel-links">
         @if (tree.wikipedia_url) {
           <a class="tree-panel-wikipedia" [href]="tree.wikipedia_url" target="_blank" rel="noopener">
@@ -108,6 +114,7 @@
           </button>
         </div>
       }
+      </div>
     </div>
   }
 </div>
