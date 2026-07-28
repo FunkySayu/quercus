@@ -1,4 +1,16 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, effect, inject } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as L from 'leaflet';
@@ -68,7 +80,7 @@ function continentPinIcon(continent: string | null | undefined): L.DivIcon {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [MatIconModule, MatProgressSpinnerModule],
+  imports: [DatePipe, DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -81,6 +93,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   // de lire l'état partagé pour filtrer ses pins et afficher le chargement/les erreurs.
   readonly loading = computed(() => this.search.loading());
   readonly error = computed(() => this.search.error());
+
+  // Arbre sélectionné (clic sur un pin), affiché dans le panneau latéral de détail.
+  readonly selectedTree = signal<Tree | null>(null);
 
   private map: L.Map | null = null;
   private markersLayer: L.LayerGroup | null = null;
@@ -117,7 +132,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     for (const tree of trees) {
       const marker = L.marker([tree.latitude, tree.longitude], {
         icon: continentPinIcon(tree.continent),
-      }).bindPopup(this.popupContent(tree));
+      }).on('click', () => this.selectedTree.set(tree));
       this.markersByTreeId.set(tree.id, marker);
     }
   }
@@ -148,29 +163,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.map.flyToBounds(bounds, { padding: [32, 32], maxZoom: 18 });
   }
 
-  private popupContent(tree: Tree): string {
-    const speciesLabel = tree.nom_usage || tree.nom_scientifique || tree.name;
-    const title = tree.nom_scientifique || tree.reference || speciesLabel || 'Arbre';
-    const subtitle = tree.reference && speciesLabel ? speciesLabel : null;
-    const date = new Date(tree.created_at).toLocaleDateString('fr-FR');
-    const wikipediaLink = tree.wikipedia_url
-      ? `<br><a href="${tree.wikipedia_url}" target="_blank" rel="noopener">Voir sur Wikipédia</a>`
-      : '';
-    const continent = tree.continent ? `<br>Continent : ${this.escapeHtml(tree.continent)}` : '';
-    return `
-      <strong>${this.escapeHtml(title)}</strong>
-      ${subtitle ? `<br>${this.escapeHtml(subtitle)}` : ''}
-      ${tree.reference ? `(${tree.reference})` : ''}
-      ${wikipediaLink}
-      ${continent}
-      <br>Précision : ±${Math.round(tree.accuracy)} m
-      <br>Saisi le ${date}
-    `;
+  closePanel(): void {
+    this.selectedTree.set(null);
   }
 
-  private escapeHtml(value: string): string {
-    const div = document.createElement('div');
-    div.textContent = value;
-    return div.innerHTML;
+  /** Titre du panneau de détail : le nom scientifique prime, avec repli sur les autres champs saisis. */
+  treeTitle(tree: Tree): string {
+    return tree.nom_scientifique || tree.reference || tree.nom_usage || tree.name || 'Arbre';
+  }
+
+  /** Nom d'usage affiché en sous-titre, sauf s'il fait doublon avec le titre. */
+  treeSubtitle(tree: Tree): string | null {
+    return tree.nom_usage && tree.nom_usage !== this.treeTitle(tree) ? tree.nom_usage : null;
   }
 }

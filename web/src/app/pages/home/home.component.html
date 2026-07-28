@@ -11,4 +11,62 @@
       <span>{{ error() }}</span>
     </div>
   }
+
+  @if (selectedTree(); as tree) {
+    <div class="tree-panel">
+      <div class="tree-panel-header">
+        <div>
+          <h2>{{ treeTitle(tree) }}</h2>
+          @if (treeSubtitle(tree)) {
+            <p class="tree-panel-subtitle">{{ treeSubtitle(tree) }}</p>
+          }
+        </div>
+        <button mat-button type="button" (click)="closePanel()">
+          <mat-icon>close</mat-icon>
+          Fermer
+        </button>
+      </div>
+
+      @if (tree.wikipedia_url) {
+        <a class="tree-panel-wikipedia" [href]="tree.wikipedia_url" target="_blank" rel="noopener">
+          Voir sur Wikipédia
+          <mat-icon>open_in_new</mat-icon>
+        </a>
+      }
+
+      <dl class="tree-panel-details">
+        @if (tree.origine) {
+          <dt>Origine</dt>
+          <dd>{{ tree.origine }}</dd>
+        }
+        @if (tree.continent) {
+          <dt>Continent</dt>
+          <dd>{{ tree.continent }}</dd>
+        }
+        @if (tree.statut_uicn) {
+          <dt>Statut UICN</dt>
+          <dd>{{ tree.statut_uicn }}</dd>
+        }
+      </dl>
+
+      @for (paragraph of tree.description?.split('\n'); track $index) {
+        <p class="tree-panel-description">{{ paragraph }}</p>
+      }
+
+      <hr />
+
+      <dl class="tree-panel-details">
+        @if (tree.reference) {
+          <dt>Référence</dt>
+          <dd>{{ tree.reference }}</dd>
+        }
+
+        <dt>Précision GPS</dt>
+        <dd>±{{ tree.accuracy | number: '1.0-0' }} m</dd>
+
+        <dt>Saisi le</dt>
+        <dd>{{ tree.created_at | date: 'dd/MM/yyyy HH:mm' }}</dd>
+      </dl>
+    </div>
+  }
 </div>
