@@ -12,6 +12,7 @@ class Species(BaseModel):
     statut_uicn_annee: str = ""
     statut_uicn_url: str = ""
     wikipedia_url: str = ""
+    powo_url: str = ""
     description: str = ""
     continent: str = ""
 
@@ -48,5 +49,6 @@ class Tree(TreeCreate):
     statut_uicn_annee: Optional[str] = None
     statut_uicn_url: Optional[str] = None
     wikipedia_url: Optional[str] = None
+    powo_url: Optional[str] = None
     description: Optional[str] = None
     continent: Optional[str] = None

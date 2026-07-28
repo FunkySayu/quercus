@@ -27,12 +27,23 @@
         </button>
       </div>
 
-      @if (tree.wikipedia_url) {
-        <a class="tree-panel-wikipedia" [href]="tree.wikipedia_url" target="_blank" rel="noopener">
-          Voir sur Wikipédia
-          <mat-icon>open_in_new</mat-icon>
-        </a>
-      }
+      <div class="tree-panel-links">
+        @if (tree.wikipedia_url) {
+          <a class="tree-panel-wikipedia" [href]="tree.wikipedia_url" target="_blank" rel="noopener">
+            Wikipédia
+            <mat-icon>open_in_new</mat-icon>
+          </a>
+        }
+        @if (tree.wikipedia_url && tree.powo_url) {
+          &mdash;
+        }
+        @if (tree.powo_url) {
+          <a class="tree-panel-wikipedia" [href]="tree.powo_url" target="_blank" rel="noopener">
+            Plants of the World Online
+            <mat-icon>open_in_new</mat-icon>
+          </a>
+        }
+      </div>
 
       <dl class="tree-panel-details">
         @if (tree.origine) {

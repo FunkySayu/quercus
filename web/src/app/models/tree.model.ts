@@ -13,6 +13,7 @@ export interface Tree {
   statut_uicn_annee: string | null;
   statut_uicn_url: string | null;
   wikipedia_url: string | null;
+  powo_url: string | null;
   description: string | null;
   continent: string | null;
 }

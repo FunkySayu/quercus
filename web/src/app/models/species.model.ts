@@ -7,6 +7,7 @@ export interface Species {
   statut_uicn_annee: string;
   statut_uicn_url: string;
   wikipedia_url: string;
+  powo_url: string;
   description: string;
   continent: string;
 }

@@ -24,6 +24,7 @@ SPECIES_FIELDNAMES = [
     "statut_uicn_annee",
     "statut_uicn_url",
     "wikipedia_url",
+    "powo_url",
     "description",
     "continent",
 ]
@@ -57,6 +58,7 @@ def append_tree(payload: TreeCreate) -> Tree:
         statut_uicn_annee=species.statut_uicn_annee or None,
         statut_uicn_url=species.statut_uicn_url or None,
         wikipedia_url=species.wikipedia_url or None,
+        powo_url=species.powo_url or None,
         description=species.description or None,
         continent=species.continent or None,
     )
@@ -108,6 +110,7 @@ def list_trees() -> List[Tree]:
                 statut_uicn_annee=(species.statut_uicn_annee or None) if species else None,
                 statut_uicn_url=(species.statut_uicn_url or None) if species else None,
                 wikipedia_url=(species.wikipedia_url or None) if species else None,
+                powo_url=(species.powo_url or None) if species else None,
                 description=(species.description or None) if species else None,
                 continent=(species.continent or None) if species else None,
             )
