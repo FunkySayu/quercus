@@ -16,6 +16,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as L from 'leaflet';
 import { Tree } from '../../models/tree.model';
 import { resolveUicnStatus, UicnStatus } from '../../models/uicn-status';
+import { Coordinates, GeolocationService } from '../../services/geolocation.service';
 import { TreeSearchService } from '../../services/tree-search.service';
 
 // Les icônes par défaut de Leaflet référencent des images relatives à son propre CSS,
@@ -114,6 +115,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   @ViewChild('mapContainer', { static: true }) private readonly mapContainer!: ElementRef<HTMLElement>;
 
   private readonly search = inject(TreeSearchService);
+  private readonly geolocation = inject(GeolocationService);
 
   // La barre de recherche vit dans la toolbar (voir app.component) ; la carte se contente
   // de lire l'état partagé pour mettre en avant les pins correspondants et afficher le
@@ -143,10 +145,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   private markersLayer: L.LayerGroup | null = null;
   private readonly markersByTreeId = new Map<string, L.Marker>();
   private readonly treesById = new Map<string, Tree>();
+  private userLocationMarker: L.CircleMarker | null = null;
 
   constructor() {
     effect(() => this.plotTrees(this.search.trees()));
     effect(() => this.applyHighlight(this.selectedTree()));
+    // Effet séparé de plotTrees : la position de l'utilisateur ne doit jamais
+    // participer au recadrage (fitBounds) de la carte sur les arbres.
+    effect(() => this.plotUserLocation(this.geolocation.currentReading()));
   }
 
   ngOnInit(): void {
@@ -192,6 +198,34 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
     const bounds = L.featureGroup(Array.from(this.markersByTreeId.values())).getBounds();
     this.map.fitBounds(bounds, { padding: [32, 32], maxZoom: 18 });
+  }
+
+  /** Affiche la position GPS courante de l'utilisateur, sans jamais recadrer la
+   * carte dessus (contrairement à plotTrees) : elle bouge en continu et ne doit
+   * pas faire sauter la vue pendant la consultation de la carte. */
+  private plotUserLocation(coordinates: Coordinates | null): void {
+    if (!this.map) {
+      return;
+    }
+    if (!coordinates) {
+      this.userLocationMarker?.remove();
+      this.userLocationMarker = null;
+      return;
+    }
+    const latLng: L.LatLngTuple = [coordinates.latitude, coordinates.longitude];
+    if (this.userLocationMarker) {
+      this.userLocationMarker.setLatLng(latLng);
+    } else {
+      this.userLocationMarker = L.circleMarker(latLng, {
+        radius: 8,
+        color: '#ffffff',
+        weight: 2,
+        fillColor: '#1A73E8',
+        fillOpacity: 1,
+      })
+        .bindTooltip('Votre position')
+        .addTo(this.map);
+    }
   }
 
   /** Estompe les pins des espèces différentes de celle mise en avant par la recherche. */
