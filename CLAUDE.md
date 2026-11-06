@@ -86,6 +86,11 @@ deux fois.
   sur le MNH LiDAR HD IGN + rattachement un-pour-un des relevés aux
   couronnes. Le script ne fait que lire les CSV ; les rattachements sont
   figés au moment du lancement, à relancer après une session de terrain.
+  Il ajoute aussi à chaque couronne un intervalle de plantation estimé
+  (`planted_after` / `planted_by`, `tools/crown_history.py`) d'après les
+  photos aériennes datées 1958-2023 (cache dans `data/aerial_cache/`,
+  `--no-history` pour sauter) : fiable à l'échelle d'un îlot, ±1 millésime
+  à l'arbre près, null pour ~27 % des couronnes jamais détectées durablement.
 
 ### Frontend (`web/src/app/`)
 

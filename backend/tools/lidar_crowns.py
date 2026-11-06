@@ -25,6 +25,11 @@ Pipeline (segmentation classique sur MNH, cf. lidR lmf + Dalponte 2016) :
   5. Relevés de même référence à < 5 m regroupés (même arbre pointé deux fois), puis
      affectation un-pour-un aux couronnes (algorithme hongrois) : une couronne ne
      porte jamais deux fiches différentes.
+  6. Année de plantation estimée de chaque couronne d'après les photos aériennes
+     datées 1958-2023 (voir crown_history.py ; `--no-history` pour sauter l'étape).
+     Propriétés `planted_after` / `planted_by` : intervalle entre le dernier millésime
+     sans l'arbre et le premier où il apparaît. Les images sont mises en cache
+     (`--cache`, défaut data/aerial_cache/) : seul le premier lancement les télécharge.
 
 Usage (depuis backend/) :
   python -m venv .venv-tools && .venv-tools/bin/pip install -r tools/requirements.txt
@@ -53,6 +58,8 @@ from scipy.optimize import linear_sum_assignment
 from skimage.draw import polygon as draw_polygon
 from skimage.measure import approximate_polygon, find_contours
 from skimage.segmentation import watershed
+
+from crown_history import estimate_planting
 
 USER_AGENT = "quercus-lidar-crowns/1.0"
 WMS_R = "https://data.geopf.fr/wms-r"
@@ -420,6 +427,9 @@ def main() -> None:
     parser.add_argument("--out", type=Path, help="dossier de sortie (défaut : celui de trees.csv)")
     parser.add_argument("--margin", type=float, default=40.0, help="marge autour des relevés, en m (défaut 40)")
     parser.add_argument("--bbox", help="emprise WGS84 explicite minlon,minlat,maxlon,maxlat (sinon : relevés + marge)")
+    parser.add_argument("--no-history", action="store_true", help="ne pas estimer l'année de plantation")
+    parser.add_argument("--cache", type=Path,
+                        help="cache des photos aériennes (défaut : aerial_cache/ dans le dossier de sortie)")
     args = parser.parse_args()
 
     readings = load_readings(args.trees, args.species)
@@ -457,6 +467,14 @@ def main() -> None:
     }
     crowns_fc, readings_fc = build_geojson(grid, chm_raw, labels, tops_r, tops_c, readings, meta)
 
+    if not args.no_history:
+        print("Année de plantation (photos aériennes datées)…")
+        cache = args.cache or (args.out or args.trees.parent) / "aerial_cache"
+        planting, planting_meta = estimate_planting(meta["bbox_l93"], crowns_fc["features"], cache)
+        for feature, estimate in zip(crowns_fc["features"], planting):
+            feature["properties"].update(estimate)
+        meta["planting"] = planting_meta
+
     out = args.out or args.trees.parent
     out.mkdir(parents=True, exist_ok=True)
     write_json(out / "lidar_crowns.geojson", crowns_fc)
@@ -465,6 +483,9 @@ def main() -> None:
     matches = [r["match"] for r in readings]
     print(f"{len(crowns_fc['features'])} couronnes ; relevés : {matches.count('inside')} dans une couronne, "
           f"{matches.count('snapped')} rattachés, {matches.count('unmatched')} sans couronne")
+    if not args.no_history:
+        dated = sum(1 for f in crowns_fc["features"] if f["properties"].get("planted_by"))
+        print(f"Année de plantation estimée pour {dated}/{len(crowns_fc['features'])} couronnes")
     print(f"Écrit dans {out}")
 
 

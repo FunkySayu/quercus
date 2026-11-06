@@ -21,6 +21,18 @@ async function fetchGeoJson(url: string): Promise<GeoJSON.FeatureCollection | nu
   }
 }
 
+/**
+ * Intervalle de plantation estimé d'après les photos aériennes datées (voir
+ * backend/tools/crown_history.py) : null si non estimé (ancien fichier ou arbre
+ * jamais détecté durablement).
+ */
+function plantingLabel(after: number | null | undefined, by: number | null | undefined): string | null {
+  if (!by) {
+    return null;
+  }
+  return after ? `Plantation estimée : entre ${after} et ${by}` : `Plantation estimée : avant ${by}`;
+}
+
 /** Charge le calque, ou null si les fichiers d'expérimentation ne sont pas là. */
 export async function loadLidarOverlay(): Promise<L.Layer | null> {
   const [crowns, readings] = await Promise.all([fetchGeoJson(CROWNS_URL), fetchGeoJson(READINGS_URL)]);
@@ -42,8 +54,11 @@ export async function loadLidarOverlay(): Promise<L.Layer | null> {
     onEachFeature: (feature, layer) => {
       const p = feature.properties ?? {};
       const refs = (p.references ?? []).join(', ') || 'aucun relevé';
+      const planting = plantingLabel(p.planted_after, p.planted_by);
       layer.bindTooltip(
-        `Couronne #${p.crown_id}<br>Hauteur ${p.height_m} m · Ø ${p.diameter_m} m<br>Relevé : ${refs}`,
+        `Couronne #${p.crown_id}<br>Hauteur ${p.height_m} m · Ø ${p.diameter_m} m` +
+          (planting ? `<br>${planting}` : '') +
+          `<br>Relevé : ${refs}`,
         { sticky: true },
       );
     },
