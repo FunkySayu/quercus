@@ -29,6 +29,36 @@
   }
 }
 
+/* Barres de défilement façon macOS : pas de flèches ni de rail, un pouce fin, arrondi et
+   translucide, collé au bord ; aux extrémités, il est rogné par l'arrondi du panneau. */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background-color: rgb(0 0 0 / 0.28);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(0 0 0 / 0.45);
+}
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-corner {
+  display: none;
+  background: transparent;
+}
+/* Firefox ne connaît que les propriétés standard (qui désactiveraient les règles
+   ci-dessus dans Chromium, d'où le @supports). */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(0 0 0 / 0.28) transparent;
+  }
+}
+
 /* Curseur de la carte selon l'outil d'édition actif (voir EditToolbar.tsx). */
 .map-tool-pipette .leaflet-interactive,
 .map-tool-paint .leaflet-interactive,
