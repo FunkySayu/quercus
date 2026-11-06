@@ -82,7 +82,7 @@ function legendEntries(crowns: Crown[], coloring: CrownColoring): LegendEntry[] 
 
 /**
  * Choix du mode de coloration des couronnes (continent, espèce, date de plantation),
- * flottant en haut à gauche de la carte à côté du zoom, avec sa légende repliable.
+ * flottant dans le coin haut gauche de la carte, avec sa légende repliable.
  */
 export function ColorSchemeControl({ crowns, coloring }: { crowns: Crown[]; coloring: CrownColoring }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -101,7 +101,7 @@ export function ColorSchemeControl({ crowns, coloring }: { crowns: Crown[]; colo
     <div
       ref={rootRef}
       onKeyDown={(e) => e.key === 'Escape' && setMenuOpen(false)}
-      className="absolute top-[10px] left-[54px] z-[1000] flex max-w-[calc(100%-64px)] flex-col items-start gap-1.5"
+      className="absolute top-[10px] left-[10px] z-[1000] flex max-w-[calc(100%-20px)] flex-col items-start gap-1.5"
     >
       <div className="flex items-center gap-1.5">
         <button

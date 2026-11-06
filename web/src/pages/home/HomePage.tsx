@@ -276,7 +276,8 @@ export default function HomePage() {
   // l'ordre, la carte existe donc déjà quand les suivants tournent au montage.
 
   useEffect(() => {
-    const map = L.map(containerRef.current!, { maxZoom: MAP_MAX_ZOOM }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    // Sans boutons +/- : zoom à la molette / au pincement, le coin reste à la légende.
+    const map = L.map(containerRef.current!, { maxZoom: MAP_MAX_ZOOM, zoomControl: false }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
     // Au-dessus des couronnes (overlayPane, z-index 400), qui sont redessinées à chaque rechargement.
     map.createPane(DIAGNOSTIC_PANE).style.zIndex = '450';
     const handles: MapHandles = {
