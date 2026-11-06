@@ -1,8 +1,7 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
-import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router';
-import { Autocomplete, Icon, Spinner, Toaster } from './components/ui';
-import { login, logout, useAuth } from './stores/auth';
-import { clearSearch, setSearchText, useCrowns, useSearchOptions } from './stores/crowns';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { Spinner, Toaster } from './components/ui';
+import { login, useAuth } from './stores/auth';
 import { startGeolocation, stopGeolocation } from './stores/geolocation';
 
 // Pages chargées à la demande, comme le lazy-loading des routes Angular d'origine.
@@ -24,7 +23,6 @@ export function App() {
   return (
     <BrowserRouter>
       <div className="flex h-full flex-col">
-        <Toolbar />
         <main className="min-h-0 flex-auto overflow-auto">
           <Suspense
             fallback={
@@ -76,93 +74,4 @@ function RequireAuth({ children }: { children: ReactNode }) {
     );
   }
   return children;
-}
-
-const NAV_LINK =
-  'inline-flex h-10 items-center gap-1.5 rounded-md px-3 text-sm font-medium hover:bg-white/10 max-sm:size-10 max-sm:justify-center max-sm:rounded-full max-sm:px-0';
-
-function navLinkClass({ isActive }: { isActive: boolean }): string {
-  return `${NAV_LINK} ${isActive ? 'bg-white/15' : ''}`;
-}
-
-/** Libellé masqué sur mobile : on garde les icônes pour laisser la place à la recherche. */
-function NavLabel({ children }: { children: ReactNode }) {
-  return <span className="max-sm:hidden">{children}</span>;
-}
-
-function Toolbar() {
-  const authenticated = useAuth((s) => s.authenticated);
-
-  return (
-    <header className="flex h-16 shrink-0 items-center gap-1 bg-primary px-4 text-white shadow-md max-sm:h-14 max-sm:px-2">
-      <Link to="/" className="flex items-center gap-2 text-white">
-        <Icon name="park" />
-        <span className="text-xl font-medium whitespace-nowrap max-sm:hidden">Localisation des chênes</span>
-      </Link>
-
-      <ToolbarSearch />
-
-      {authenticated && (
-        <NavLink to="/saisie" className={navLinkClass} aria-label="Saisie">
-          <Icon name="add_location_alt" />
-          <NavLabel>Saisie</NavLabel>
-        </NavLink>
-      )}
-      <NavLink to="/liste" className={navLinkClass} aria-label="Liste">
-        <Icon name="list" />
-        <NavLabel>Liste</NavLabel>
-      </NavLink>
-
-      {authenticated === true && (
-        <button type="button" className={`${NAV_LINK} cursor-pointer`} aria-label="Déconnexion" onClick={logout}>
-          <Icon name="logout" />
-          <NavLabel>Déconnexion</NavLabel>
-        </button>
-      )}
-      {authenticated === false && (
-        <button type="button" className={`${NAV_LINK} cursor-pointer`} aria-label="Connexion" onClick={() => login()}>
-          <Icon name="login" />
-          <NavLabel>Connexion</NavLabel>
-        </button>
-      )}
-    </header>
-  );
-}
-
-/** Barre de recherche centrée dans l'espace restant de la toolbar (état partagé : stores/crowns.ts). */
-function ToolbarSearch() {
-  const searchText = useCrowns((s) => s.searchText);
-  const options = useSearchOptions();
-
-  return (
-    <div className="flex min-w-0 flex-auto justify-center px-4 max-sm:px-2">
-      <Autocomplete
-        id="toolbar-search"
-        className="w-full max-w-[420px]"
-        value={searchText}
-        onChange={setSearchText}
-        options={options.map((option) => ({
-          key: option.key,
-          value: option.value,
-          primary: option.scientificName,
-          secondary: `${option.commonName} (${option.reference})`,
-        }))}
-        placeholder="Rechercher un arbre…"
-        inputClassName="h-10 w-full rounded-md border border-white/40 bg-white/12 pr-10 pl-10 text-white caret-white placeholder:text-white/70 focus:border-white focus:outline-none"
-        prefix={<Icon name="search" className="pointer-events-none absolute left-2.5 text-white/90" />}
-        suffix={
-          searchText && (
-            <button
-              type="button"
-              aria-label="Effacer"
-              className="absolute right-1 flex size-8 cursor-pointer items-center justify-center rounded-full text-white/90 hover:bg-white/10"
-              onClick={clearSearch}
-            >
-              <Icon name="close" />
-            </button>
-          )
-        }
-      />
-    </div>
-  );
 }

@@ -1,3 +1,6 @@
+/* Police d'icônes chargée dans un layer : hors layer, son `font-size: 24px` primerait
+   sur les utilitaires Tailwind (text-sm…) et toutes les icônes resteraient à 24px. */
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons') layer(base);
 @import 'leaflet/dist/leaflet.css';
 @import 'tailwindcss';
 

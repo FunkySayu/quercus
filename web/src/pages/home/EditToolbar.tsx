@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { listSpecies } from '../../api';
 import { Icon, useClickOutside } from '../../components/ui';
 import type { Species } from '../../models/species';
+import { useColorScheme } from '../../stores/color-scheme';
 import { type EditTool, redo, setPaletteReference, setTool, undo, useEditTools } from '../../stores/edit-tools';
 import { showToast } from '../../stores/toast';
-import { compareReferences, continentColor } from './crown-style';
+import { compareReferences, speciesSwatchColor } from './crown-style';
 
 /** "Quercus robur" → "Q. robur" (nom d'usage à défaut de nom scientifique). */
 export function shortSpeciesName(species: Pick<Species, 'nom_scientifique' | 'nom_usage' | 'reference'>): string {
@@ -154,6 +155,7 @@ export function EditToolbar() {
 function PaletteDropdown() {
   const reference = useEditTools((s) => s.paletteReference);
   const [species, setSpecies] = useState<Species[]>([]);
+  const scheme = useColorScheme((s) => s.scheme);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
   const rootRef = useRef<HTMLDivElement>(null);
@@ -201,7 +203,7 @@ function PaletteDropdown() {
           <span
             aria-hidden="true"
             className="mx-px size-2.5 shrink-0 rounded-full ring-1 ring-white/40"
-            style={{ backgroundColor: continentColor(current.continent) }}
+            style={{ backgroundColor: speciesSwatchColor(current, scheme) }}
           />
         ) : (
           <Icon name="palette" className="text-[11px]!" />
@@ -254,7 +256,7 @@ function PaletteDropdown() {
                     <span
                       aria-hidden="true"
                       className="size-2 shrink-0 rounded-full ring-1 ring-white/40"
-                      style={{ backgroundColor: continentColor(s.continent) }}
+                      style={{ backgroundColor: speciesSwatchColor(s, scheme) }}
                     />
                     <span className={`min-w-0 flex-1 truncate italic ${selected ? 'font-medium' : ''}`}>
                       {shortSpeciesName(s)}

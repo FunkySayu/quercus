@@ -127,11 +127,18 @@ deux fois.
 `npm start` lance Vite (proxy `/api` → `localhost:8000`, voir
 `vite.config.ts`) ; `npm run build` type-check puis builde dans `dist/`.
 
-Routes (`App.tsx`, avec la toolbar et la garde `RequireAuth` de `/saisie`),
-pages chargées en lazy-loading :
+Routes (`App.tsx`, avec la garde `RequireAuth` de `/saisie`), pages chargées
+en lazy-loading. Pas de barre d'en-tête : la navigation passe par la frise de
+la carte (bouton recherche à gauche, menu réglages à droite : connexion,
+saisie, liste, calque de diagnostic « Rattachement GPS ») ; les pages secondaires ont un lien
+« Carte » (`BackToMap`).
 - `/` (`pages/home/HomePage.tsx`) — carte Leaflet pilotée impérativement
   (pas de react-leaflet) : un polygone par couronne (`/api/crowns`), coloré
-  par continent si identifié, contour discret sinon (`crown-style.ts`) ;
+  si identifié, contour discret sinon (`crown-style.ts`) ; mode de coloration
+  au choix (`ColorSchemeControl.tsx`, `stores/color-scheme.ts`, mémorisé en
+  localStorage) : continent, espèce (palette Glasbey de 100 couleurs avec
+  attribution thématique par fiche, `species-colors.ts`) ou date de plantation
+  estimée (rampe par intervalle, couronnes non identifiées comprises) ;
   clic → panneau de détail `TreePanel.tsx` (fiche espèce + hauteur,
   plantation estimée, relevés). Fonds de carte dans `base-layers.ts` /
   `BaseLayerTimeline.tsx` (frise flottante en bas de la carte) ; calque optionnel de diagnostic `lidar-overlay.ts`
@@ -146,7 +153,7 @@ pages chargées en lazy-loading :
   ligne par couronne / cercle GPS) ; clic → ouvre l'arbre sur la carte.
 
 État partagé en stores zustand (`stores/`) : `crowns.ts` porte les couronnes
-chargées, la recherche de la toolbar et la sélection (valeurs dérivées dans
+chargées, la recherche (popover de la frise) et la sélection (valeurs dérivées dans
 des hooks mémoïsés, `useSelectedCrown` etc. — jamais de tableau recalculé
 dans un sélecteur zustand, ça bouclerait) ; `auth.ts`, `geolocation.ts`,
 `toast.ts`. `api.ts` regroupe les wrappers `fetch` vers le backend.

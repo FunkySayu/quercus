@@ -1,15 +1,17 @@
 import type * as L from 'leaflet';
-import { type Crown, isIdentified } from '../../models/crown';
+import { type Crown, isIdentified, plantingLabel } from '../../models/crown';
+import type { ColorScheme } from '../../stores/color-scheme';
+import { speciesColor } from './species-colors';
 
 // Couleurs moyennement saturées par continent d'origine, utilisées pour teinter
 // les couronnes identifiées. "Quercus sp." et les continents inconnus retombent sur le gris.
-const CONTINENT_COLORS: Record<string, string> = {
+export const CONTINENT_COLORS: Record<string, string> = {
   Europe: '#4C7EA8',
   'Amérique du Nord': '#5B9B5B',
   Mexique: '#B5544A',
   Asie: '#C9A227',
 };
-const DEFAULT_CROWN_COLOR = '#9AA0A6';
+export const DEFAULT_CROWN_COLOR = '#9AA0A6';
 const UNIDENTIFIED_CROWN_COLOR = '#FFFFFF';
 const HIDDEN_CROWN_FILL = '#202124';
 
@@ -17,10 +19,86 @@ export function continentColor(continent: string | null | undefined): string {
   return (continent && CONTINENT_COLORS[continent]) || DEFAULT_CROWN_COLOR;
 }
 
+// --- Date de plantation ------------------------------------------------------
+
+/** Rampe séquentielle claire (colorcet `bmy`, tronquée côté sombre pour rester lisible
+ * sur les photos aériennes) : violet = planté anciennement, jaune = récemment. */
+const PLANTING_RAMP = ['#97038F', '#CF0081', '#FA2A6F', '#FF6956', '#FFA031', '#FFCB1C', '#FFEF22'];
+
+function rampColor(t: number): string {
+  const position = Math.min(1, Math.max(0, t)) * (PLANTING_RAMP.length - 1);
+  const index = Math.min(PLANTING_RAMP.length - 2, Math.floor(position));
+  const [a, b] = [PLANTING_RAMP[index], PLANTING_RAMP[index + 1]];
+  const mix = (offset: number) => {
+    const from = parseInt(a.slice(offset, offset + 2), 16);
+    const to = parseInt(b.slice(offset, offset + 2), 16);
+    return Math.round(from + (to - from) * (position - index))
+      .toString(16)
+      .padStart(2, '0');
+  };
+  return `#${mix(1)}${mix(3)}${mix(5)}`;
+}
+
+export interface PlantingClass {
+  plantedBy: number;
+  label: string;
+  color: string;
+}
+
+/**
+ * Classes de plantation présentes sur la carte, de la plus ancienne à la plus récente.
+ * Les estimations tombent sur les millésimes des photos aériennes (une poignée
+ * d'intervalles) : la couleur suit le rang de l'intervalle plutôt que l'année, sinon
+ * les millésimes rapprochés (2013, 2014, 2015…) seraient indiscernables.
+ */
+export function buildPlantingClasses(crowns: Crown[]): PlantingClass[] {
+  const byYear = new Map<number, string>();
+  for (const crown of crowns) {
+    if (crown.planted_by && !byYear.has(crown.planted_by)) {
+      byYear.set(crown.planted_by, plantingLabel(crown)!);
+    }
+  }
+  const years = Array.from(byYear.keys()).sort((a, b) => a - b);
+  return years.map((plantedBy, index) => ({
+    plantedBy,
+    label: byYear.get(plantedBy)!,
+    color: rampColor(years.length > 1 ? index / (years.length - 1) : 1),
+  }));
+}
+
+// --- Coloration --------------------------------------------------------------
+
+/** Mode de coloration choisi, et ce qu'il faut pour l'appliquer. */
+export interface CrownColoring {
+  scheme: ColorScheme;
+  plantingClasses: PlantingClass[];
+}
+
+/** Teinte d'une couronne dans le mode courant, ou null si elle n'en a pas (gris). */
+export function crownColor(crown: Crown, coloring: CrownColoring): string | null {
+  switch (coloring.scheme) {
+    case 'continent':
+      return (crown.continent && CONTINENT_COLORS[crown.continent]) || null;
+    case 'species':
+      return speciesColor(crown.reference);
+    case 'planting':
+      return coloring.plantingClasses.find((c) => c.plantedBy === crown.planted_by)?.color ?? null;
+  }
+}
+
+/** Pastille d'une fiche du catalogue (barre d'outils d'édition) : couleur d'espèce en
+ * mode « Espèce », de continent sinon (la date de plantation est propre à chaque arbre). */
+export function speciesSwatchColor(
+  species: { reference: string; continent: string | null },
+  scheme: ColorScheme,
+): string {
+  return (scheme === 'species' && speciesColor(species.reference)) || continentColor(species.continent);
+}
+
 /** `selected` : la couronne cliquée/recherchée ; `lowlight` : estompée car d'une autre fiche. */
 export type CrownState = 'normal' | 'selected' | 'lowlight';
 
-export function crownStyle(crown: Crown, state: CrownState): L.PathOptions {
+export function crownStyle(crown: Crown, state: CrownState, coloring: CrownColoring): L.PathOptions {
   if (crown.hidden) {
     // Couronne masquée (visible seulement connecté) : grisée (voile sombre + contour
     // pointillé), pour qu'on voie qu'elle n'est pas affichée aux visiteurs tout en
@@ -38,6 +116,17 @@ export function crownStyle(crown: Crown, state: CrownState): L.PathOptions {
     // Couronnes LiDAR sans relevé : simple contour discret, pour situer les arbres
     // non encore pointés sans voler la vedette aux fiches. Remplissage quasi
     // transparent mais non nul, pour rester cliquable.
+    // En mode « Plantation », la date estimée vaut aussi pour elles : contour teinté.
+    const dated = coloring.scheme === 'planting' ? crownColor(crown, coloring) : null;
+    if (dated) {
+      return {
+        color: state === 'selected' ? '#FFFFFF' : dated,
+        fillColor: dated,
+        weight: state === 'selected' ? 3 : 1.5,
+        opacity: state === 'selected' ? 1 : state === 'lowlight' ? 0.2 : 0.75,
+        fillOpacity: state === 'selected' ? 0.3 : state === 'lowlight' ? 0.03 : 0.12,
+      };
+    }
     return {
       color: UNIDENTIFIED_CROWN_COLOR,
       fillColor: UNIDENTIFIED_CROWN_COLOR,
@@ -46,7 +135,7 @@ export function crownStyle(crown: Crown, state: CrownState): L.PathOptions {
       fillOpacity: state === 'selected' ? 0.2 : 0.03,
     };
   }
-  const color = continentColor(crown.continent);
+  const color = crownColor(crown, coloring) ?? DEFAULT_CROWN_COLOR;
   return {
     color: state === 'selected' ? '#FFFFFF' : color,
     fillColor: color,

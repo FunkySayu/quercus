@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { api, listSpecies } from '../api';
-import { Autocomplete, type AutocompleteOption, buttonClass, Icon, Spinner } from '../components/ui';
+import { Autocomplete, type AutocompleteOption, BackToMap, buttonClass, Icon, Spinner } from '../components/ui';
 import { formatNumber } from '../format';
 import type { Species } from '../models/species';
 import { PING_INTERVAL_MS, useGeolocation } from '../stores/geolocation';
@@ -143,6 +143,7 @@ export default function EntryPage() {
 
   return (
     <div className="mx-auto my-6 max-w-[640px] px-4 pb-12">
+      <BackToMap />
       <section className="rounded-lg bg-white p-4 shadow ring-1 ring-black/5">
         <h1 className="mb-4 text-xl font-medium">Saisie d'un arbre</h1>
 

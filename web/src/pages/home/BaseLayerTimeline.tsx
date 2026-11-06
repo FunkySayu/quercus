@@ -1,5 +1,8 @@
 import { Fragment, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
-import { Icon, useClickOutside } from '../../components/ui';
+import { useNavigate } from 'react-router';
+import { Autocomplete, Icon, useClickOutside } from '../../components/ui';
+import { login, logout, useAuth } from '../../stores/auth';
+import { clearSearch, setSearchText, useCrowns, useSearchOptions } from '../../stores/crowns';
 import { BASE_LAYER_GROUPS, findBaseLayer, formatLayerDate, type BaseLayerOption } from './base-layers';
 
 interface Props {
@@ -30,12 +33,12 @@ const EDGE_FADE = 'linear-gradient(to right, transparent, #000 12%, #000 88%, tr
 const ON_MAP_TEXT = { textShadow: '0 1px 2px rgb(0 0 0 / 0.7), 0 0 6px rgb(0 0 0 / 0.35)' };
 
 /** Matériau « verre dépoli » commun à chaque contrôle flottant. */
-const GLASS =
+export const GLASS =
   'bg-white/80 text-black/85 shadow-[0_2px_10px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.06] ' +
   'backdrop-blur-xl backdrop-saturate-[1.8]';
 /** Gabarit commun aux trois pastilles sous la frise (date, fond, résolution) ; largeur à part. */
 const PILL = 'flex h-6 shrink-0 items-center justify-center rounded-full text-[11px]';
-const PRESSABLE =
+export const PRESSABLE =
   'cursor-pointer transition hover:bg-white/95 active:scale-95 ' +
   'focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:outline-none';
 
@@ -89,9 +92,13 @@ export function BaseLayerTimeline({
   const { positions, startYear, yearMarks, width } = useMemo(() => layoutTimeline(steps), [steps]);
   const index = Math.max(0, steps.findIndex((o) => o.id === current.id));
 
-  const [menuOpen, setMenuOpen] = useState(false);
+  /** Un seul panneau ouvert à la fois au-dessus de la frise. */
+  const [popover, setPopover] = useState<'layers' | 'search' | 'settings' | null>(null);
+  const toggle = (name: 'layers' | 'search' | 'settings') => setPopover(popover === name ? null : name);
+  const close = () => setPopover(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  useClickOutside(menuRef, () => setMenuOpen(false), menuOpen);
+  useClickOutside(menuRef, close, popover !== null);
+  const searchActive = useCrowns((s) => s.searchText !== '');
 
   // --- Glissement de la frise --------------------------------------------------
   const drag = useRef<{ startX: number; active: boolean } | null>(null);
@@ -157,25 +164,23 @@ export function BaseLayerTimeline({
   return (
     <div
       ref={menuRef}
-      onKeyDown={(e) => e.key === 'Escape' && setMenuOpen(false)}
+      onKeyDown={(e) => e.key === 'Escape' && close()}
       className={
         'pointer-events-none absolute bottom-6 left-0 z-[1000] flex flex-col items-center gap-1.5 px-3 ' +
         (besidePanel ? 'right-[360px] max-sm:hidden' : 'right-0')
       }
     >
-      {/* Menu ouvert au-dessus de tout le sélecteur, pour ne pas masquer la frise. */}
-      {menuOpen && (
+      {/* Panneaux ouverts au-dessus de tout le sélecteur, pour ne pas masquer la frise. */}
+      {popover === 'layers' && (
         <LayerMenu
           baseLayerId={baseLayerId}
           onSelect={(id) => {
             onSelect(id);
-            setMenuOpen(false);
+            close();
           }}
-          lidarOverlayAvailable={lidarOverlayAvailable}
-          lidarOverlayVisible={lidarOverlayVisible}
-          onToggleLidarOverlay={onToggleLidarOverlay}
         />
       )}
+      {popover === 'search' && <SearchOverlay onDone={close} />}
 
       {toolbar && <div className="mb-1.5 flex max-w-full justify-center">{toolbar}</div>}
 
@@ -281,18 +286,27 @@ export function BaseLayerTimeline({
         />
       </div>
 
-      {/* Date · nom (menu) · résolution, chacun sur son propre fond. */}
-      <div className="pointer-events-auto flex max-w-full items-center gap-2">
+      {/* Recherche · date · nom (menu) · résolution · réglages, chacun sur son propre fond. */}
+      <div className="pointer-events-auto flex max-w-full items-center gap-2 max-sm:gap-1.5">
+        <RoundButton
+          icon="search"
+          label="Rechercher un arbre"
+          expanded={popover === 'search'}
+          active={searchActive}
+          onClick={() => toggle('search')}
+        />
+
         <InfoPill label="Date de prise de vue" value={formatLayerDate(current)} />
 
-        <div>
+        {/* Sur mobile, le nom prend la place restante (et se tronque) pour que la rangée tienne. */}
+        <div className="max-sm:min-w-0 max-sm:flex-1">
           <button
             type="button"
             aria-haspopup="menu"
-            aria-expanded={menuOpen}
+            aria-expanded={popover === 'layers'}
             aria-label={`Fond de carte : ${current.label}`}
-            className={`${PILL} w-[188px] gap-0.5 pr-1.5 pl-2.5 font-medium max-sm:w-[156px] ${GLASS} ${PRESSABLE}`}
-            onClick={() => setMenuOpen(!menuOpen)}
+            className={`${PILL} w-[188px] gap-0.5 pr-1.5 pl-2.5 font-medium max-sm:w-full ${GLASS} ${PRESSABLE}`}
+            onClick={() => toggle('layers')}
           >
             <span className="truncate">{current.label}</span>
             <Icon name="expand_more" className="text-base text-black/85" />
@@ -300,8 +314,180 @@ export function BaseLayerTimeline({
         </div>
 
         <InfoPill label="Résolution au sol" value={current.resolution ?? 'n.c.'} />
+
+        <div className="relative">
+          <RoundButton
+            icon="settings"
+            label="Réglages"
+            expanded={popover === 'settings'}
+            onClick={() => toggle('settings')}
+          />
+          {popover === 'settings' && (
+            <SettingsMenu
+              onDone={close}
+              lidarOverlay={
+                lidarOverlayAvailable ? { visible: lidarOverlayVisible, onToggle: onToggleLidarOverlay } : null
+              }
+            />
+          )}
+        </div>
       </div>
     </div>
+  );
+}
+
+/** Bouton rond au gabarit des pastilles (h-6), ouvrant un panneau. */
+function RoundButton({
+  icon,
+  label,
+  expanded,
+  active = false,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  expanded: boolean;
+  /** Mis en évidence (ex. une recherche est en cours). */
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-haspopup="true"
+      aria-expanded={expanded}
+      className={`flex size-6 shrink-0 items-center justify-center rounded-full ${GLASS} ${PRESSABLE} ${active ? 'text-primary' : ''}`}
+      onClick={onClick}
+    >
+      <Icon name={icon} className="text-base" />
+    </button>
+  );
+}
+
+/** Popover commun : verre dépoli, ouvert vers le haut. */
+const POPOVER =
+  'pointer-events-auto absolute bottom-full mb-2 rounded-2xl bg-white/85 p-1.5 shadow-[0_12px_48px_rgba(0,0,0,0.25)] ' +
+  'ring-1 ring-black/[0.08] backdrop-blur-2xl backdrop-saturate-[1.8]';
+const MENU_ITEM =
+  'flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-2 py-1.5 text-left text-sm ' +
+  'hover:bg-black/[0.05] focus-visible:bg-black/[0.05] focus-visible:outline-none';
+
+/** Recherche d'un arbre (état partagé : stores/crowns.ts), posée au-dessus de la frise. */
+function SearchOverlay({ onDone }: { onDone: () => void }) {
+  const searchText = useCrowns((s) => s.searchText);
+  const options = useSearchOptions();
+
+  return (
+    <div className={`${POPOVER} left-1/2 w-[min(360px,calc(100vw-24px))] -translate-x-1/2`}>
+      <Autocomplete
+        id="map-search"
+        autoFocus
+        listAbove
+        value={searchText}
+        onChange={setSearchText}
+        onSelect={onDone}
+        options={options.map((option) => ({
+          key: option.key,
+          value: option.value,
+          primary: option.scientificName,
+          secondary: `${option.commonName} (${option.reference})`,
+        }))}
+        placeholder="Rechercher un arbre…"
+        inputClassName="h-9 w-full rounded-[10px] bg-black/[0.05] pr-9 pl-9 text-sm focus:bg-white focus:ring-2 focus:ring-primary/50 focus:outline-none"
+        prefix={<Icon name="search" className="pointer-events-none absolute left-2 text-xl text-black/50" />}
+        suffix={
+          searchText && (
+            <button
+              type="button"
+              aria-label="Effacer"
+              className="absolute right-1 flex size-7 cursor-pointer items-center justify-center rounded-full text-black/60 hover:bg-black/[0.06]"
+              onClick={clearSearch}
+            >
+              <Icon name="close" className="text-lg" />
+            </button>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+/** Menu des réglages : connexion, pages secondaires, interrupteur GPS. */
+function SettingsMenu({
+  onDone,
+  lidarOverlay,
+}: {
+  onDone: () => void;
+  /** Calque de diagnostic relevés GPS → couronnes, null s'il n'a pas été généré. */
+  lidarOverlay: { visible: boolean; onToggle: () => void } | null;
+}) {
+  const authenticated = useAuth((s) => s.authenticated);
+  const navigate = useNavigate();
+  const go = (path: string) => {
+    onDone();
+    void navigate(path);
+  };
+
+  return (
+    <div role="menu" className={`${POPOVER} right-0 w-[220px]`}>
+      {authenticated === true ? (
+        <button type="button" role="menuitem" className={MENU_ITEM} onClick={logout}>
+          <Icon name="logout" className="text-xl text-black/60" />
+          Déconnexion
+        </button>
+      ) : (
+        <button
+          type="button"
+          role="menuitem"
+          className={`${MENU_ITEM} disabled:cursor-default disabled:opacity-40`}
+          disabled={authenticated === null}
+          onClick={() => login()}
+        >
+          <Icon name="login" className="text-xl text-black/60" />
+          Connexion
+        </button>
+      )}
+      {authenticated && (
+        <button type="button" role="menuitem" className={MENU_ITEM} onClick={() => go('/saisie')}>
+          <Icon name="add_location_alt" className="text-xl text-black/60" />
+          Saisie
+        </button>
+      )}
+      <button type="button" role="menuitem" className={MENU_ITEM} onClick={() => go('/liste')}>
+        <Icon name="list" className="text-xl text-black/60" />
+        Liste des arbres
+      </button>
+      {lidarOverlay && (
+        // Interrupteur : le menu reste ouvert pour comparer avec/sans.
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={lidarOverlay.visible}
+          title="Diagnostic · relevés bruts → couronnes"
+          className={MENU_ITEM}
+          onClick={lidarOverlay.onToggle}
+        >
+          <Icon name="share_location" className="text-xl text-black/60" />
+          <span className="flex-1">Rattachement GPS</span>
+          <Switch on={lidarOverlay.visible} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function Switch({ on }: { on: boolean }) {
+  return (
+    <span
+      className={`relative h-[22px] w-9 shrink-0 rounded-full transition-colors duration-200 ${on ? 'bg-primary' : 'bg-black/15'}`}
+    >
+      <span
+        className="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-200"
+        style={{ transform: on ? 'translateX(14px)' : undefined, transitionTimingFunction: EASE }}
+      />
+    </span>
   );
 }
 
@@ -351,15 +537,9 @@ function ChevronButton({
 function LayerMenu({
   baseLayerId,
   onSelect,
-  lidarOverlayAvailable,
-  lidarOverlayVisible,
-  onToggleLidarOverlay,
 }: {
   baseLayerId: string;
   onSelect: (id: string) => void;
-  lidarOverlayAvailable: boolean;
-  lidarOverlayVisible: boolean;
-  onToggleLidarOverlay: () => void;
 }) {
   const itemClass =
     'flex w-full cursor-pointer items-center gap-2 rounded-[10px] px-2 py-1.5 text-left ' +
@@ -400,30 +580,6 @@ function LayerMenu({
               </button>
             );
           })}
-          {group.group === 'technique' && lidarOverlayAvailable && (
-            // Interrupteur : le menu reste ouvert pour comparer avec/sans.
-            <button
-              type="button"
-              role="menuitemcheckbox"
-              aria-checked={lidarOverlayVisible}
-              className={itemClass}
-              onClick={onToggleLidarOverlay}
-            >
-              <span className="w-5" />
-              <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                <span className="text-sm">Rattachement GPS</span>
-                <small className="text-xs text-black/50">Diagnostic · relevés bruts → couronnes</small>
-              </span>
-              <span
-                className={`relative h-[22px] w-9 shrink-0 rounded-full transition-colors duration-200 ${lidarOverlayVisible ? 'bg-primary' : 'bg-black/15'}`}
-              >
-                <span
-                  className="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-200"
-                  style={{ transform: lidarOverlayVisible ? 'translateX(14px)' : undefined, transitionTimingFunction: EASE }}
-                />
-              </span>
-            </button>
-          )}
         </Fragment>
       ))}
     </div>

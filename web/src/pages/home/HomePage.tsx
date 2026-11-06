@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { Icon, Spinner } from '../../components/ui';
 import { type Crown, type CrownFeature, type CrownReading, canHide, isIdentified } from '../../models/crown';
 import { useAuth } from '../../stores/auth';
+import { useColorScheme } from '../../stores/color-scheme';
 import { pushAction, setPaletteReference, setTool, undo, useEditTools } from '../../stores/edit-tools';
 import {
   clearSearch,
@@ -18,7 +19,8 @@ import { useGeolocation } from '../../stores/geolocation';
 import { showToast } from '../../stores/toast';
 import { BaseLayerTimeline } from './BaseLayerTimeline';
 import { MAP_MAX_ZOOM, findBaseLayer, loadStoredBaseLayer, storeBaseLayer } from './base-layers';
-import { type CrownState, compareReferences, crownStyle } from './crown-style';
+import { ColorSchemeControl } from './ColorSchemeControl';
+import { type CrownColoring, type CrownState, buildPlantingClasses, compareReferences, crownStyle } from './crown-style';
 import { EditToolbar } from './EditToolbar';
 import { DIAGNOSTIC_PANE, loadLidarOverlay } from './lidar-overlay';
 import { TreePanel } from './TreePanel';
@@ -41,7 +43,7 @@ interface MapHandles {
 }
 
 /** Met en avant la couronne sélectionnée et celles de la même fiche, estompe les autres. */
-function applyHighlight(handles: MapHandles, selected: Crown | null): void {
+function applyHighlight(handles: MapHandles, selected: Crown | null, coloring: CrownColoring): void {
   handles.pathsByCrownId.forEach((path, id) => {
     const crown = handles.crownsById.get(id);
     if (!crown) {
@@ -55,7 +57,7 @@ function applyHighlight(handles: MapHandles, selected: Crown | null): void {
         state = 'lowlight';
       }
     }
-    path.setStyle(crownStyle(crown, state));
+    path.setStyle(crownStyle(crown, state, coloring));
     // Seule une fiche passe au premier plan : une couronne non identifiée remontée
     // masquerait ensuite les cercles GPS posés dessus.
     if (state === 'selected' && isIdentified(crown)) {
@@ -232,6 +234,17 @@ export default function HomePage() {
   selectedRef.current = selectedCrown;
   const currentReading = useGeolocation((s) => s.currentReading);
 
+  /** Mode de coloration des couronnes (sélecteur en haut à gauche, voir crown-style.ts). */
+  const scheme = useColorScheme((s) => s.scheme);
+  const crowns = useMemo(() => features.map((feature) => feature.properties), [features]);
+  const plantingClasses = useMemo(
+    () => buildPlantingClasses(crowns.filter((crown) => !crown.hidden)),
+    [crowns],
+  );
+  const coloring = useMemo<CrownColoring>(() => ({ scheme, plantingClasses }), [scheme, plantingClasses]);
+  const coloringRef = useRef(coloring);
+  coloringRef.current = coloring;
+
   /** Masquer/restaurer une couronne : réservé aux utilisateurs connectés (le backend
    * ne leur renvoie qu'à eux les couronnes masquées). */
   const canEdit = useAuth((s) => s.authenticated === true);
@@ -320,7 +333,7 @@ export default function HomePage() {
     );
     const identifiedPaths: L.Path[] = [];
     const crownsLayer = L.geoJSON(ordered, {
-      style: (feature) => crownStyle(feature!.properties as Crown, 'normal'),
+      style: (feature) => crownStyle(feature!.properties as Crown, 'normal', coloringRef.current),
       onEachFeature: (feature, layer) => {
         const crown = feature.properties as Crown;
         const path = layer as L.Path;
@@ -337,7 +350,7 @@ export default function HomePage() {
     // Lu via la ref : la sélection ne doit pas être une dépendance de CET effet, sinon
     // tout serait redessiné (et recadré) à chaque changement de recherche.
     const selected = selectedRef.current;
-    applyHighlight(handles, selected);
+    applyHighlight(handles, selected, coloringRef.current);
 
     // Arrivée avec une sélection déjà faite (ex. clic dans la liste) : on cadre dessus
     // plutôt que sur l'ensemble des fiches.
@@ -354,7 +367,7 @@ export default function HomePage() {
   // (recherche, Précédent/Suivant), sans toucher au zoom choisi par l'utilisateur.
   useEffect(() => {
     const handles = handlesRef.current!;
-    applyHighlight(handles, selectedCrown);
+    applyHighlight(handles, selectedCrown, coloringRef.current);
     const path = selectedCrown ? handles.pathsByCrownId.get(selectedCrown.id) : undefined;
     if (!path) {
       return;
@@ -364,6 +377,11 @@ export default function HomePage() {
       handles.map.panTo(center);
     }
   }, [selectedCrown]);
+
+  // Changement de mode de coloration : simple restylage, sans redessiner les couronnes.
+  useEffect(() => {
+    applyHighlight(handlesRef.current!, selectedRef.current, coloring);
+  }, [coloring]);
 
   // Position GPS courante de l'utilisateur, sans jamais recadrer la carte dessus : elle
   // bouge en continu et ne doit pas faire sauter la vue pendant la consultation.
@@ -454,6 +472,8 @@ export default function HomePage() {
     // les classes posées par Leaflet (leaflet-container…) et la carte deviendrait blanche.
     <div className={`relative h-full ${canEdit ? `map-tool-${tool}` : ''}`}>
       <div ref={containerRef} className="size-full" />
+
+      <ColorSchemeControl crowns={crowns} coloring={coloring} />
 
       <BaseLayerTimeline
         baseLayerId={baseLayerId}

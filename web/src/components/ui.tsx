@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Link } from 'react-router';
 import { dismissToast, useToast } from '../stores/toast';
 
 /** Icône Material (police chargée dans index.html), par son nom de ligature. */
@@ -37,6 +38,16 @@ export const buttonClass = {
   /** mat-icon-button */
   icon: `${BUTTON_BASE} size-10 rounded-full hover:bg-black/5`,
 };
+
+/** Retour à la carte, en tête des pages secondaires (l'app n'a pas de barre d'en-tête). */
+export function BackToMap() {
+  return (
+    <Link to="/" className={`${buttonClass.text} -ml-3 mb-2 text-black/70`}>
+      <Icon name="arrow_back" className="text-xl" />
+      Carte
+    </Link>
+  );
+}
 
 /** Lien texte (Tailwind réinitialise le style par défaut des <a>). */
 export const linkClass = 'text-primary underline underline-offset-2 hover:text-primary-dark';
@@ -112,6 +123,9 @@ interface AutocompleteProps {
   className?: string;
   prefix?: ReactNode;
   suffix?: ReactNode;
+  /** Ouvre les suggestions au-dessus du champ (champ placé en bas de l'écran). */
+  listAbove?: boolean;
+  autoFocus?: boolean;
 }
 
 /**
@@ -131,6 +145,8 @@ export function Autocomplete({
   className = '',
   prefix,
   suffix,
+  listAbove = false,
+  autoFocus = false,
 }: AutocompleteProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -166,6 +182,7 @@ export function Autocomplete({
           id={id}
           type="text"
           autoComplete="off"
+          autoFocus={autoFocus}
           role="combobox"
           aria-expanded={showList}
           aria-controls={listId}
@@ -204,7 +221,10 @@ export function Autocomplete({
           ref={listRef}
           id={listId}
           role="listbox"
-          className="absolute inset-x-0 top-full z-[1100] mt-1 max-h-72 overflow-y-auto rounded-md bg-white py-1 text-black shadow-lg ring-1 ring-black/10"
+          className={
+            'absolute inset-x-0 z-[1100] max-h-72 overflow-y-auto rounded-md bg-white py-1 text-black shadow-lg ring-1 ring-black/10 ' +
+            (listAbove ? 'bottom-full mb-1' : 'top-full mt-1')
+          }
         >
           {options.map((option, index) => (
             <li

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { buttonClass, Icon, linkClass, Spinner } from '../components/ui';
+import { BackToMap, buttonClass, Icon, linkClass, Spinner } from '../components/ui';
 import { formatDateTime, formatNumber } from '../format';
 import { type Crown, bestAccuracy, lastReadingDate, plantingLabel } from '../models/crown';
 import { reloadCrowns, selectCrown, useCrowns, useIdentifiedCrowns } from '../stores/crowns';
@@ -31,6 +31,7 @@ export default function ListingPage() {
 
   return (
     <div className="mx-auto my-6 max-w-[900px] px-4 pb-12">
+      <BackToMap />
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-2xl font-medium">Arbres saisis</h2>
         <button type="button" className={buttonClass.stroked} disabled={loading} onClick={() => void reloadCrowns()}>
