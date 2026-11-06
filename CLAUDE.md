@@ -26,7 +26,9 @@ Deux jeux de données, deux logiques de vie différentes :
 
 ## Architecture
 
-Deux services derrière Docker Compose (`docker-compose.yml`) :
+Deux services derrière Docker Compose (`docker-compose.yml`), qui tire les
+images `ghcr.io/funkysayu/quercus-{backend,web}` publiées par
+`.github/workflows/docker-publish.yml` (push sur `main` / tags `v*`) :
 
 - **`web/`** — Angular 17 (standalone components, signals), Angular
   Material, Leaflet pour la carte. Buildé en statique et servi par nginx
@@ -35,7 +37,7 @@ Deux services derrière Docker Compose (`docker-compose.yml`) :
 - **`backend/`** — FastAPI (Python), stockage en fichiers CSV plats (pas
   de base de données). Servi par uvicorn.
 
-Les deux fichiers CSV vivent dans `backend/data/` (monté en volume Docker
+Les deux fichiers CSV vivent dans `data/` à la racine du repo (monté en volume Docker
 sur `/data`, voir `docker-compose.yml`) — c'est un **volume persistant
 avec des données réelles de terrain**, pas des fixtures. Le dossier est
 gitignore, sauf le seed initial du catalogue qui est versionné à part

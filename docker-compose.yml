@@ -1,8 +1,8 @@
 services:
   backend:
-    build: ./backend
+    image: ghcr.io/funkysayu/quercus-backend:latest
     volumes:
-      - ./backend/data:/data
+      - ./data:/data
     env_file:
       - .env
     environment:
@@ -10,7 +10,7 @@ services:
     restart: unless-stopped
 
   web:
-    build: ./web
+    image: ghcr.io/funkysayu/quercus-web:latest
     ports:
       - "49821:80"
     depends_on:
