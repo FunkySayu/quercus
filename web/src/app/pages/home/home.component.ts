@@ -12,13 +12,24 @@ import {
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import * as L from 'leaflet';
 import { Tree } from '../../models/tree.model';
 import { resolveUicnStatus, UicnStatus } from '../../models/uicn-status';
 import { Coordinates, GeolocationService } from '../../services/geolocation.service';
 import { TreeSearchService } from '../../services/tree-search.service';
+import {
+  BASE_LAYER_GROUPS,
+  MAP_MAX_ZOOM,
+  findBaseLayer,
+  formatLayerDate,
+  loadStoredBaseLayer,
+  storeBaseLayer,
+} from './base-layers';
+import { loadLidarOverlay } from './lidar-overlay';
 
 // Les icônes par défaut de Leaflet référencent des images relatives à son propre CSS,
 // ce qui casse une fois bundlé par Angular. On les repointe vers les assets copiés
@@ -33,11 +44,6 @@ const DEFAULT_ICON = L.icon({
   shadowSize: [41, 41],
 });
 L.Marker.prototype.options.icon = DEFAULT_ICON;
-
-const SATELLITE_TILE_URL =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-const SATELLITE_ATTRIBUTION =
-  'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
 
 const DEFAULT_CENTER: L.LatLngTuple = [46.6, 1.88]; // Centre approximatif de la France
 const DEFAULT_ZOOM = 5;
@@ -108,7 +114,7 @@ function compareReferences(a: string, b: string): number {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [DatePipe, DecimalPipe, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [DatePipe, DecimalPipe, MatButtonModule, MatDividerModule, MatIconModule, MatMenuModule, MatProgressSpinnerModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss',
 })
@@ -147,7 +153,19 @@ export class HomeComponent implements OnInit, OnDestroy {
    * Sans effet sur desktop, où tout est toujours affiché (voir home.component.scss). */
   readonly mobilePanelExpanded = signal(false);
 
+  /** Fond de carte choisi dans le sélecteur en haut à droite (voir base-layers.ts). */
+  readonly baseLayerGroups = BASE_LAYER_GROUPS;
+  readonly formatLayerDate = formatLayerDate;
+  readonly baseLayerId = signal<string>(loadStoredBaseLayer());
+  readonly baseLayerOption = computed(() => findBaseLayer(this.baseLayerId()));
+
+  /** Calque expérimental des couronnes LiDAR : proposé seulement si ses fichiers existent. */
+  readonly lidarOverlayAvailable = signal(false);
+  readonly lidarOverlayVisible = signal(false);
+  private lidarOverlay: L.Layer | null = null;
+
   private map: L.Map | null = null;
+  private baseLayer: L.Layer | null = null;
   private markersLayer: L.LayerGroup | null = null;
   private readonly markersByTreeId = new Map<string, L.Marker>();
   private readonly treesById = new Map<string, Tree>();
@@ -159,6 +177,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Effet séparé de plotTrees : la position de l'utilisateur ne doit jamais
     // participer au recadrage (fitBounds) de la carte sur les arbres.
     effect(() => this.plotUserLocation(this.geolocation.currentReading()));
+    effect(() => this.applyBaseLayer(this.baseLayerId()));
     // Toute nouvelle sélection (ou fermeture) repart du panneau replié sur mobile.
     effect(
       () => {
@@ -170,12 +189,17 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.map = L.map(this.mapContainer.nativeElement).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-    L.tileLayer(SATELLITE_TILE_URL, {
-      attribution: SATELLITE_ATTRIBUTION,
-      maxZoom: 19,
-    }).addTo(this.map);
+    this.map = L.map(this.mapContainer.nativeElement, { maxZoom: MAP_MAX_ZOOM }).setView(
+      DEFAULT_CENTER,
+      DEFAULT_ZOOM,
+    );
+    // Posé ici plutôt que d'attendre l'effet : il a pu tourner avant la création de la carte.
+    untracked(() => this.applyBaseLayer(this.baseLayerId()));
     this.markersLayer = L.layerGroup().addTo(this.map);
+    loadLidarOverlay().then((layer) => {
+      this.lidarOverlay = layer;
+      this.lidarOverlayAvailable.set(layer !== null);
+    });
 
     this.search.reload();
   }
@@ -183,6 +207,33 @@ export class HomeComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.map?.remove();
     this.map = null;
+  }
+
+  toggleLidarOverlay(): void {
+    if (!this.map || !this.lidarOverlay) {
+      return;
+    }
+    const visible = !this.lidarOverlayVisible();
+    this.lidarOverlayVisible.set(visible);
+    if (visible) {
+      this.lidarOverlay.addTo(this.map);
+    } else {
+      this.lidarOverlay.remove();
+    }
+  }
+
+  selectBaseLayer(id: string): void {
+    this.baseLayerId.set(id);
+    storeBaseLayer(id);
+  }
+
+  /** Remplace le fond de carte courant, sous les pins (ajoutés dans leur propre calque). */
+  private applyBaseLayer(id: string): void {
+    if (!this.map) {
+      return;
+    }
+    this.baseLayer?.remove();
+    this.baseLayer = findBaseLayer(id).create().addTo(this.map);
   }
 
   /** Trace tous les pins (toujours affichés) et recadre la carte dessus. */

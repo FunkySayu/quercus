@@ -1,0 +1,7 @@
+# Dépendances du script hors-ligne tools/lidar_crowns.py (pas de l'app :
+# l'image Docker du backend ne copie que app/).
+numpy==2.5.4
+scipy==1.18.1
+scikit-image==0.26.0
+tifffile==2026.10.15
+pyproj==3.8.0

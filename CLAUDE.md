@@ -76,6 +76,14 @@ deux fois.
 - `routers/species.py` — `GET /api/species`, sert le catalogue complet
   (utilisé côté front pour l'autocomplétion — la volumétrie est faible,
   pas de recherche serveur).
+- `routers/lidar.py` — `GET /api/lidar/crowns` et `/api/lidar/readings` :
+  sert tels quels `lidar_crowns.geojson` / `lidar_readings.geojson`, à côté
+  de `trees.csv` (ou dans `LIDAR_DIR`), 404 tant qu'ils n'ont pas été générés. Ils sont produits
+  hors-ligne par `backend/tools/lidar_crowns.py` (dépendances à part dans
+  `tools/requirements.txt`, hors image Docker) : couronnes d'arbres détectées
+  sur le MNH LiDAR HD IGN + rattachement un-pour-un des relevés aux
+  couronnes. Le script ne fait que lire les CSV ; les rattachements sont
+  figés au moment du lancement, à relancer après une session de terrain.
 
 ### Frontend (`web/src/app/`)
 

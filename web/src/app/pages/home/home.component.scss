@@ -28,6 +28,49 @@
   z-index: 1000;
 }
 
+// Sélecteur de fond de carte, en haut à droite. Sur desktop, le panneau de détail
+// occupe le bord droit : le sélecteur se décale alors à sa gauche (360px + marge).
+.base-layer-picker {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+
+  &--beside-panel {
+    right: 370px;
+  }
+}
+
+.base-layer-trigger.mat-mdc-unelevated-button {
+  background: rgba(255, 255, 255, 0.95);
+  color: rgba(0, 0, 0, 0.87);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  padding: 0 4px 0 12px;
+}
+
+.base-layer-trigger-caret {
+  margin: 0 !important;
+}
+
+.base-layer-group-label {
+  padding: 8px 16px 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.base-layer-option {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+
+  small {
+    color: rgba(0, 0, 0, 0.6);
+  }
+}
+
 .map-overlay-error {
   color: #b3261e;
 }
@@ -176,6 +219,15 @@
 // "Voir plus" (.tree-panel--expanded, posé par home.component.ts). Le desktop
 // garde le panneau latéral inchangé (règles au-dessus, non concernées par ce bloc).
 @media (max-width: 599px) {
+  // Le panneau passe en bas : le sélecteur reste dans le coin, réduit à son icône.
+  .base-layer-picker--beside-panel {
+    right: 10px;
+  }
+
+  .base-layer-trigger-label {
+    display: none;
+  }
+
   .tree-panel {
     top: auto;
     left: 0;

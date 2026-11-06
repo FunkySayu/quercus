@@ -1,6 +1,46 @@
 <div class="map-page">
   <div class="map-container" #mapContainer></div>
 
+  <div class="base-layer-picker" [class.base-layer-picker--beside-panel]="selectedTree()">
+    <button
+      mat-flat-button
+      type="button"
+      class="base-layer-trigger"
+      [matMenuTriggerFor]="baseLayerMenu"
+      aria-label="Choisir le fond de carte"
+    >
+      <mat-icon>layers</mat-icon>
+      <span class="base-layer-trigger-label">{{ baseLayerOption().label }}</span>
+      <mat-icon class="base-layer-trigger-caret">arrow_drop_down</mat-icon>
+    </button>
+    <mat-menu #baseLayerMenu="matMenu" xPosition="before" class="base-layer-menu">
+      @for (group of baseLayerGroups; track group.group; let first = $first) {
+        @if (!first) {
+          <mat-divider></mat-divider>
+        }
+        <div class="base-layer-group-label" (click)="$event.stopPropagation()">{{ group.label }}</div>
+        @for (option of group.options; track option.id) {
+          <button mat-menu-item type="button" (click)="selectBaseLayer(option.id)">
+            <mat-icon>{{ option.id === baseLayerId() ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
+            <span class="base-layer-option">
+              <span>{{ option.label }}</span>
+              <small>{{ formatLayerDate(option) }} · {{ option.hint }}</small>
+            </span>
+          </button>
+        }
+        @if (group.group === 'technique' && lidarOverlayAvailable()) {
+          <button mat-menu-item type="button" (click)="$event.stopPropagation(); toggleLidarOverlay()">
+            <mat-icon>{{ lidarOverlayVisible() ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+            <span class="base-layer-option">
+              <span>Couronnes LiDAR</span>
+              <small>Expérimental · relevés rattachés</small>
+            </span>
+          </button>
+        }
+      }
+    </mat-menu>
+  </div>
+
   @if (loading()) {
     <div class="map-overlay">
       <mat-spinner diameter="32"></mat-spinner>
