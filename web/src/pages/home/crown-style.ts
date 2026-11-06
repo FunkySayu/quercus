@@ -13,7 +13,7 @@ const DEFAULT_CROWN_COLOR = '#9AA0A6';
 const UNIDENTIFIED_CROWN_COLOR = '#FFFFFF';
 const HIDDEN_CROWN_FILL = '#202124';
 
-function continentColor(continent: string | null | undefined): string {
+export function continentColor(continent: string | null | undefined): string {
   return (continent && CONTINENT_COLORS[continent]) || DEFAULT_CROWN_COLOR;
 }
 

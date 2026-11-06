@@ -1,8 +1,10 @@
 import * as L from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { api } from '../../api';
 import { Icon, Spinner } from '../../components/ui';
-import { type Crown, type CrownFeature, canHide, isIdentified } from '../../models/crown';
+import { type Crown, type CrownFeature, type CrownReading, canHide, isIdentified } from '../../models/crown';
 import { useAuth } from '../../stores/auth';
+import { pushAction, setPaletteReference, setTool, undo, useEditTools } from '../../stores/edit-tools';
 import {
   clearSearch,
   reloadCrowns,
@@ -17,6 +19,7 @@ import { showToast } from '../../stores/toast';
 import { BaseLayerTimeline } from './BaseLayerTimeline';
 import { MAP_MAX_ZOOM, findBaseLayer, loadStoredBaseLayer, storeBaseLayer } from './base-layers';
 import { type CrownState, compareReferences, crownStyle } from './crown-style';
+import { EditToolbar } from './EditToolbar';
 import { DIAGNOSTIC_PANE, loadLidarOverlay } from './lidar-overlay';
 import { TreePanel } from './TreePanel';
 
@@ -61,6 +64,159 @@ function applyHighlight(handles: MapHandles, selected: Crown | null): void {
   });
 }
 
+/**
+ * Masque (ou restaure) une couronne et inscrit l'opération dans l'historique
+ * annuler/rétablir de la barre d'outils. Demande confirmation avant de détacher
+ * les relevés d'une fiche. Renvoie false si l'utilisateur a renoncé.
+ */
+async function hideWithHistory(crown: Crown, hide: boolean): Promise<boolean> {
+  if (
+    hide &&
+    isIdentified(crown) &&
+    !window.confirm(
+      `Cette couronne porte la fiche ${crown.reference ?? ''}. La masquer détache ses relevés, ` +
+        'qui seront affichés comme simples positions GPS. Continuer ?',
+    )
+  ) {
+    return false;
+  }
+  await setCrownHidden(crown, hide);
+  const before = { ...crown, hidden: !hide };
+  const after = { ...crown, hidden: hide };
+  pushAction({
+    label: hide ? 'Couronne masquée.' : 'Couronne restaurée.',
+    undo: () => setCrownHidden(after, !hide),
+    redo: () => setCrownHidden(before, hide),
+  });
+  return true;
+}
+
+/**
+ * Attribue la fiche de la palette à une couronne LiDAR non identifiée, en créant un
+ * relevé à son sommet (précision 0) : le backend le rattache en direct à la couronne
+ * qui le contient, et une régénération LiDAR le retrouvera `inside`. Annulable (le
+ * relevé est supprimé). Une couronne portant déjà une fiche n'est pas repeinte : ce
+ * serait réécrire des relevés de terrain.
+ */
+async function paintCrown(crown: Crown): Promise<void> {
+  const reference = useEditTools.getState().paletteReference;
+  if (!reference) {
+    showToast('Choisissez d’abord une fiche dans la palette.');
+    return;
+  }
+  if (crown.hidden || crown.source !== 'lidar' || !crown.top) {
+    showToast(crown.hidden ? 'Couronne masquée : restaurez-la d’abord.' : 'Seules les couronnes LiDAR peuvent être peintes.');
+    return;
+  }
+  if (isIdentified(crown)) {
+    showToast(
+      crown.reference === reference
+        ? 'Cette couronne porte déjà cette fiche.'
+        : `Cette couronne porte déjà la fiche ${crown.reference ?? ''}.`,
+    );
+    return;
+  }
+  const [longitude, latitude] = crown.top;
+  const create = () => api.createTree({ latitude, longitude, accuracy: 0, reference, name: null });
+  try {
+    let treeId = (await create()).id;
+    await reloadCrowns();
+    pushAction({
+      label: `Fiche ${reference} attribuée.`,
+      undo: async () => {
+        await api.deleteTree(treeId);
+        await reloadCrowns();
+      },
+      redo: async () => {
+        treeId = (await create()).id;
+        await reloadCrowns();
+      },
+    });
+    showToast(`Fiche ${reference} attribuée.`);
+  } catch {
+    showToast("Échec de l'attribution, veuillez réessayer.", { action: 'Fermer', duration: 5000 });
+  }
+}
+
+/** Relevé créé par la peinture (voir `paintCrown`) : précision 0, sans nom saisi. */
+function isPainted(reading: CrownReading): boolean {
+  return reading.accuracy === 0 && !reading.name;
+}
+
+/**
+ * Retire la fiche d'une couronne peinte en supprimant ses relevés de peinture.
+ * Refusé si la couronne porte un relevé de terrain : on ne les efface pas d'ici.
+ * Annulable (les relevés sont recréés aux mêmes positions).
+ */
+async function eraseCrown(crown: Crown): Promise<void> {
+  if (!isIdentified(crown)) {
+    showToast('Cette couronne n’a pas de fiche à effacer.');
+    return;
+  }
+  if (!crown.readings.every(isPainted)) {
+    showToast('Cette couronne porte un relevé de terrain : sa fiche ne peut pas être effacée ici.');
+    return;
+  }
+  const painted = crown.readings.map(({ latitude, longitude, reference }) => ({ latitude, longitude, reference }));
+  let ids = crown.readings.map((reading) => reading.id);
+  const remove = async () => {
+    await Promise.all(ids.map((id) => api.deleteTree(id)));
+    await reloadCrowns();
+  };
+  try {
+    await remove();
+    const label = `Fiche ${crown.reference ?? ''} effacée.`;
+    pushAction({
+      label,
+      undo: async () => {
+        const created = await Promise.all(
+          painted.map((reading) => api.createTree({ ...reading, accuracy: 0, name: null })),
+        );
+        ids = created.map((tree) => tree.id);
+        await reloadCrowns();
+      },
+      redo: remove,
+    });
+    showToast(label);
+  } catch {
+    showToast("Échec de l'effacement, veuillez réessayer.", { action: 'Fermer', duration: 5000 });
+  }
+}
+
+/** Clic sur une couronne : selon l'outil actif de la barre d'édition (connecté seulement). */
+function onCrownClick(crown: Crown): void {
+  const tool = useAuth.getState().authenticated ? useEditTools.getState().tool : 'cursor';
+  switch (tool) {
+    case 'cursor':
+      selectCrown(crown);
+      return;
+    case 'pipette':
+      if (!crown.reference || !isIdentified(crown)) {
+        showToast("Cette couronne n'a pas de fiche à prélever.");
+        return;
+      }
+      setPaletteReference(crown.reference);
+      setTool('paint');
+      return;
+    case 'paint':
+      void paintCrown(crown);
+      return;
+    case 'erase':
+      void eraseCrown(crown);
+      return;
+    case 'delete':
+      if (!canHide(crown) || crown.hidden) {
+        showToast(crown.hidden ? 'Couronne déjà masquée.' : 'Seules les couronnes LiDAR peuvent être masquées.');
+        return;
+      }
+      hideWithHistory(crown, true).then(
+        (done) => done && showToast('Couronne masquée.'),
+        () => showToast('Échec de la modification, veuillez réessayer.', { action: 'Fermer', duration: 5000 }),
+      );
+      return;
+  }
+}
+
 export default function HomePage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const handlesRef = useRef<MapHandles | null>(null);
@@ -79,6 +235,7 @@ export default function HomePage() {
   /** Masquer/restaurer une couronne : réservé aux utilisateurs connectés (le backend
    * ne leur renvoie qu'à eux les couronnes masquées). */
   const canEdit = useAuth((s) => s.authenticated === true);
+  const tool = useEditTools((s) => s.tool);
   const [hiding, setHiding] = useState(false);
 
   /** Fond de carte choisi dans la frise en bas de la carte (voir base-layers.ts). */
@@ -167,7 +324,7 @@ export default function HomePage() {
       onEachFeature: (feature, layer) => {
         const crown = feature.properties as Crown;
         const path = layer as L.Path;
-        path.on('click', () => selectCrown(crown));
+        path.on('click', () => onCrownClick(crown));
         handles.pathsByCrownId.set(crown.id, path);
         handles.crownsById.set(crown.id, crown);
         if (isIdentified(crown)) {
@@ -261,27 +418,16 @@ export default function HomePage() {
       return;
     }
     const hide = !crown.hidden;
-    if (
-      hide &&
-      isIdentified(crown) &&
-      !window.confirm(
-        `Cette couronne porte la fiche ${crown.reference ?? ''}. La masquer détache ses relevés, ` +
-          'qui seront affichés comme simples positions GPS. Continuer ?',
-      )
-    ) {
-      return;
-    }
     setHiding(true);
     try {
-      await setCrownHidden(crown, hide);
-      showToast(hide ? 'Couronne masquée.' : 'Couronne restaurée.', {
-        action: 'Annuler',
-        duration: 5000,
-        onAction: () =>
-          setCrownHidden({ ...crown, hidden: hide }, !hide).catch(() =>
-            showToast("Échec de l'annulation.", { action: 'Fermer', duration: 5000 }),
-          ),
-      });
+      if (await hideWithHistory(crown, hide)) {
+        showToast(hide ? 'Couronne masquée.' : 'Couronne restaurée.', {
+          action: 'Annuler',
+          duration: 5000,
+          onAction: () =>
+            undo().catch(() => showToast("Échec de l'annulation.", { action: 'Fermer', duration: 5000 })),
+        });
+      }
     } catch {
       showToast('Échec de la modification, veuillez réessayer.', { action: 'Fermer', duration: 5000 });
     } finally {
@@ -304,7 +450,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative h-full">
+    // Classe d'outil sur l'enveloppe, jamais sur le conteneur Leaflet : React y écraserait
+    // les classes posées par Leaflet (leaflet-container…) et la carte deviendrait blanche.
+    <div className={`relative h-full ${canEdit ? `map-tool-${tool}` : ''}`}>
       <div ref={containerRef} className="size-full" />
 
       <BaseLayerTimeline
@@ -314,6 +462,7 @@ export default function HomePage() {
         lidarOverlayAvailable={lidarOverlayAvailable}
         lidarOverlayVisible={lidarOverlayVisible}
         onToggleLidarOverlay={toggleLidarOverlay}
+        toolbar={canEdit ? <EditToolbar /> : undefined}
       />
 
       {(loading || error) && (

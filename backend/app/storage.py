@@ -82,6 +82,27 @@ def append_tree(payload: TreeCreate) -> Tree:
     return tree
 
 
+def delete_tree(tree_id: str) -> bool:
+    """Retire un relevé de trees.csv (annulation d'une attribution faite depuis la carte).
+
+    Réécriture atomique ligne à ligne, les autres relevés restent intacts. False si inconnu.
+    """
+    with _lock:
+        _ensure_file()
+        with CSV_PATH.open("r", newline="", encoding="utf-8") as handle:
+            rows = list(csv.DictReader(handle))
+        kept = [row for row in rows if row["id"] != tree_id]
+        if len(kept) == len(rows):
+            return False
+        tmp = CSV_PATH.with_suffix(CSV_PATH.suffix + ".tmp")
+        with tmp.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
+            writer.writeheader()
+            writer.writerows(kept)
+        tmp.replace(CSV_PATH)
+        return True
+
+
 def list_trees() -> List[Tree]:
     with _lock:
         _ensure_file()

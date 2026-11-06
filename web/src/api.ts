@@ -34,6 +34,8 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     }),
+  /** Retire un relevé (annulation d'une attribution faite à la peinture). */
+  deleteTree: (id: string) => request<void>(`/api/trees/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 };
 
 let speciesCache: Promise<Species[]> | null = null;

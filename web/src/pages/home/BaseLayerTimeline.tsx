@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, type PointerEvent } from 'react';
+import { Fragment, useMemo, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { Icon, useClickOutside } from '../../components/ui';
 import { BASE_LAYER_GROUPS, findBaseLayer, formatLayerDate, type BaseLayerOption } from './base-layers';
 
@@ -10,6 +10,8 @@ interface Props {
   lidarOverlayAvailable: boolean;
   lidarOverlayVisible: boolean;
   onToggleLidarOverlay: () => void;
+  /** Contenu optionnel empilé au-dessus de la frise (barre d'outils d'édition). */
+  toolbar?: ReactNode;
 }
 
 /** Échelle de la frise : linéaire, une graduation par an. */
@@ -72,6 +74,7 @@ export function BaseLayerTimeline({
   lidarOverlayAvailable,
   lidarOverlayVisible,
   onToggleLidarOverlay,
+  toolbar,
 }: Props) {
   const current = findBaseLayer(baseLayerId);
   // Ordre chronologique réel (une année seule compte pour le milieu de l'année, alors
@@ -173,6 +176,8 @@ export function BaseLayerTimeline({
           onToggleLidarOverlay={onToggleLidarOverlay}
         />
       )}
+
+      {toolbar && <div className="mb-1.5 flex max-w-full justify-center">{toolbar}</div>}
 
       {/* Frise : années au-dessus (sans fond), puis la règle sur son bandeau, centrée sur
           l'image courante ; les chevrons sont alignés sur la ligne de la règle. */}

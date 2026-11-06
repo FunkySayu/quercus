@@ -4,7 +4,8 @@ L'UI ne raisonne plus en pins (un par relevé) mais en couronnes : chaque arbre 
 un polygone, soit sa couronne LiDAR (lidar_crowns.geojson) quand un relevé y a été
 rattaché par tools/lidar_crowns.py, soit un cercle de `GPS_CIRCLE_DIAMETER_M` centré
 sur le relevé quand aucune couronne ne lui correspond de façon fiable (relevé
-`unmatched`, ou relevé saisi après le dernier lancement du script).
+`unmatched`, ou relevé saisi après le dernier lancement du script et tombant hors de
+toute couronne — s'il tombe dedans, il y est rattaché en direct).
 
 Les rattachements viennent de lidar_readings.geojson (figé au lancement du script),
 mais les fiches (référence, espèce) sont relues EN DIRECT dans trees.csv /
@@ -129,6 +130,32 @@ def gps_circle(longitude: float, latitude: float, diameter_m: float = GPS_CIRCLE
     return {"type": "Polygon", "coordinates": [ring]}
 
 
+def _ring_contains(ring: List[List[float]], x: float, y: float) -> bool:
+    """Lancer de rayon sur un anneau GeoJSON ([lon, lat], fermé)."""
+    inside = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
+def _geometry_contains(geometry: dict, x: float, y: float) -> bool:
+    """Point dans un Polygon / MultiPolygon (trous compris)."""
+    kind = geometry.get("type")
+    polygons = [geometry.get("coordinates", [])] if kind == "Polygon" else geometry.get("coordinates", [])
+    for rings in polygons:
+        if rings and _ring_contains(rings[0], x, y) and not any(_ring_contains(hole, x, y) for hole in rings[1:]):
+            return True
+    return False
+
+
+def _crown_containing(crowns_by_id: Dict[int, dict], longitude: float, latitude: float) -> Optional[int]:
+    for crown_id, feature in crowns_by_id.items():
+        if _geometry_contains(feature.get("geometry") or {}, longitude, latitude):
+            return crown_id
+    return None
+
+
 def _species_payload(tree: Tree) -> Dict[str, Optional[str]]:
     return {field: getattr(tree, field) for field in _SPECIES_FIELDS}
 
@@ -209,6 +236,11 @@ def build_crowns(include_hidden: bool = False) -> dict:
         crown_id = link.get("crown_id") if link else None
         if link and link.get("match") in IDENTIFIED_MATCHES and crown_id in crowns_by_id:
             trees_by_crown.setdefault(crown_id, []).append(tree)
+        elif not link and (live_id := _crown_containing(crowns_by_id, tree.longitude, tree.latitude)) is not None:
+            # Relevé postérieur au dernier calcul LiDAR (ou attribué depuis la carte) qui
+            # tombe dans une couronne : rattaché en direct, comme le ferait le script
+            # (`inside`), plutôt que d'attendre sa prochaine exécution.
+            trees_by_crown.setdefault(live_id, []).append(tree)
         else:
             loose_trees.append(tree)
 

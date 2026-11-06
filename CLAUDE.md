@@ -94,8 +94,11 @@ deux fois.
   `lidar_readings.geojson` et, en direct, `trees.csv` / `species.csv`. Un
   relevé rattaché (`match` `inside` ou `snapped`, cf. `IDENTIFIED_MATCHES`)
   est fusionné dans sa couronne (une fiche par couronne) ; un relevé
-  `unmatched` ou postérieur au dernier calcul LiDAR devient un cercle de 2 m
-  (`source: "gps"`). Les couronnes sans relevé sont aussi servies
+  postérieur au dernier calcul LiDAR qui tombe dans une couronne visible y est
+  rattaché en direct ; sinon (ou `unmatched`) il devient un cercle de 2 m
+  (`source: "gps"`). L'outil « peindre » de la carte s'appuie là-dessus : il
+  crée un relevé (précision 0) au sommet de la couronne via `POST /api/trees`,
+  annulable par `DELETE /api/trees/{id}`. Les couronnes sans relevé sont aussi servies
   (`readings: []`). Sans fichiers LiDAR, tous les relevés sont des cercles.
   Couronnes masquées : `DELETE /api/crowns/{crown_id}` (connecté) ne supprime
   rien, il pose `hidden: true` (+ `hidden_by` / `hidden_at`) dans

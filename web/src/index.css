@@ -25,3 +25,11 @@
     color: rgb(0 0 0 / 0.87);
   }
 }
+
+/* Curseur de la carte selon l'outil d'édition actif (voir EditToolbar.tsx). */
+.map-tool-pipette .leaflet-interactive,
+.map-tool-paint .leaflet-interactive,
+.map-tool-erase .leaflet-interactive,
+.map-tool-delete .leaflet-interactive {
+  cursor: crosshair;
+}
