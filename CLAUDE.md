@@ -13,8 +13,12 @@ enrichies (nom scientifique, nom d'usage, origine, statut UICN, lien
 Wikipédia, description, continent) affichées sur la carte et dans la
 liste, sans avoir à ressaisir cette information à chaque arbre planté.
 Le continent (`Europe`, `Amérique du Nord`, `Mexique`, `Asie`, vide si
-inconnu/non identifié) sert notamment à colorer les pins de la carte
+inconnu/non identifié) sert notamment à colorer les couronnes de la carte
 (voir `home.component.ts`).
+
+L'unité affichée par l'UI est la **couronne**, pas le relevé : chaque arbre
+est un polygone, sa couronne LiDAR quand un relevé y est rattaché, sinon un
+cercle de 2 m autour du relevé GPS (voir `app/crowns.py`).
 
 Deux jeux de données, deux logiques de vie différentes :
 - **Le catalogue d'espèces** (`species.csv`) : référentiel relativement
@@ -47,6 +51,13 @@ deux fois.
 ### Backend (`backend/app/`)
 
 - `main.py` — app FastAPI, monte les routers `trees` et `species`.
+- `auth.py` / `routers/auth.py` — connexion OIDC Authentik (cookie `session`
+  = id_token). **Mode dev** : `AUTH_DEV_MODE=1` court-circuite Authentik
+  (variables `AUTHENTIK_*` alors facultatives) — `/api/auth/login` pose juste
+  un cookie factice `dev-session` reconnu comme utilisateur « Mode dev »,
+  `/logout` l'efface. Jamais en production (non défini dans
+  `docker-compose.yml`) ; hors mode dev ce cookie est rejeté comme tout jeton
+  invalide.
 - `models.py` — modèles Pydantic : `Species`, `TreeCreate`/`Tree`. `Tree`
   hérite de `TreeCreate` et ajoute les champs d'enrichissement
   (`nom_scientifique`, `nom_usage`, `origine`, `statut_uicn`,
@@ -78,6 +89,22 @@ deux fois.
 - `routers/species.py` — `GET /api/species`, sert le catalogue complet
   (utilisé côté front pour l'autocomplétion — la volumétrie est faible,
   pas de recherche serveur).
+- `crowns.py` + `routers/crowns.py` — `GET /api/crowns`, **source de données
+  de l'UI** : FeatureCollection fusionnant `lidar_crowns.geojson`,
+  `lidar_readings.geojson` et, en direct, `trees.csv` / `species.csv`. Un
+  relevé rattaché (`match` `inside` ou `snapped`, cf. `IDENTIFIED_MATCHES`)
+  est fusionné dans sa couronne (une fiche par couronne) ; un relevé
+  `unmatched` ou postérieur au dernier calcul LiDAR devient un cercle de 2 m
+  (`source: "gps"`). Les couronnes sans relevé sont aussi servies
+  (`readings: []`). Sans fichiers LiDAR, tous les relevés sont des cercles.
+  Couronnes masquées : `DELETE /api/crowns/{crown_id}` (connecté) ne supprime
+  rien, il pose `hidden: true` (+ `hidden_by` / `hidden_at`) dans
+  `lidar_crowns.geojson` ; `POST /api/crowns/{crown_id}/restore` le retire.
+  `GET /api/crowns` les filtre pour les visiteurs et les renvoie marquées aux
+  utilisateurs connectés (affichées grisées, restaurables). Les relevés d'une
+  couronne masquée retombent en cercles GPS. `tools/lidar_crowns.py` reporte
+  les marqueurs à la régénération (par position du sommet, les numéros de
+  couronne n'étant pas stables).
 - `routers/lidar.py` — `GET /api/lidar/crowns` et `/api/lidar/readings` :
   sert tels quels `lidar_crowns.geojson` / `lidar_readings.geojson`, à côté
   de `trees.csv` (ou dans `LIDAR_DIR`), 404 tant qu'ils n'ont pas été générés. Ils sont produits
@@ -95,8 +122,11 @@ deux fois.
 ### Frontend (`web/src/app/`)
 
 Routes (`app.routes.ts`), toutes en lazy-loading standalone :
-- `/` (`pages/home`) — carte Leaflet (fond satellite Esri) avec un pin
-  par arbre relevé, popup enrichi (référence, nom, lien Wikipédia).
+- `/` (`pages/home`) — carte Leaflet : un polygone par couronne
+  (`/api/crowns`), coloré par continent si identifié, contour discret sinon ;
+  clic → panneau de détail (fiche espèce + hauteur, plantation estimée,
+  relevés). Calque optionnel de diagnostic `lidar-overlay.ts` (relevés GPS
+  bruts → sommet de couronne).
 - `/saisie` (`pages/entry`) — formulaire de terrain : ping GPS continu
   (`services/geolocation.service.ts`, démarré au bootstrap de l'app dans
   `app.component.ts`) tant que la précision n'est pas suffisante
@@ -104,10 +134,14 @@ Routes (`app.routes.ts`), toutes en lazy-loading standalone :
   Material sur le catalogue d'espèces (`services/species.service.ts`) —
   sélectionner une suggestion synchronise les deux champs vers la même
   fiche.
-- `/liste` (`pages/listing`) — tableau de tous les relevés.
+- `/liste` (`pages/listing`) — tableau des arbres identifiés (une ligne par
+  couronne / cercle GPS) ; clic → ouvre l'arbre sur la carte.
 
-`services/tree.service.ts` et `services/species.service.ts` sont de
-simples wrappers HTTP vers `/api/trees` et `/api/species`.
+`services/crown-search.service.ts` porte l'état partagé (couronnes chargées,
+recherche de la toolbar, sélection) entre carte, liste et toolbar.
+`services/crown.service.ts`, `tree.service.ts` (saisie) et
+`species.service.ts` sont de simples wrappers HTTP vers `/api/crowns`,
+`/api/trees` et `/api/species`.
 
 ## Points d'attention pour un futur changement
 

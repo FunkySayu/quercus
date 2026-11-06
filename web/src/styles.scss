@@ -15,24 +15,6 @@ body {
   padding: 0 16px 48px;
 }
 
-// Pins colorés par continent sur la carte (voir home.component.ts) : L.divIcon
-// applique par défaut un fond blanc et une bordure, qu'on retire ici puisque le
-// SVG inline gère déjà tout le rendu visuel du pin.
-.continent-pin {
-  background: transparent;
-  border: none;
-  overflow: visible;
-  stroke-width: 2;
-
-  &--lowlight {
-    opacity: 0.3;
-  }
-
-  svg {
-    overflow: visible;
-  }
-}
-
 // Options d'autocomplétion sur deux lignes (nom scientifique en gras, puis nom
 // commun + référence) : mat-option est à une seule ligne tronquée par défaut,
 // on l'assouplit pour ces options (recherche carte + saisie d'un arbre).

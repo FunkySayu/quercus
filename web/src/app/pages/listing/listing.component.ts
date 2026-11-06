@@ -1,12 +1,14 @@
 import { DatePipe, DecimalPipe } from '@angular/common';
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
-import { Tree } from '../../models/tree.model';
-import { TreeService } from '../../services/tree.service';
+import { Crown, bestAccuracy, lastReadingDate, plantingLabel } from '../../models/crown.model';
+import { CrownSearchService } from '../../services/crown-search.service';
 
+/** Un arbre identifié par ligne (couronne LiDAR ou cercle GPS), du plus récemment relevé au plus ancien. */
 @Component({
   selector: 'app-listing',
   standalone: true,
@@ -22,30 +24,35 @@ import { TreeService } from '../../services/tree.service';
   styleUrl: './listing.component.scss',
 })
 export class ListingComponent implements OnInit {
-  readonly trees = signal<Tree[]>([]);
-  readonly loading = signal(false);
-  readonly error = signal<string | null>(null);
+  private readonly search = inject(CrownSearchService);
+  private readonly router = inject(Router);
 
-  readonly displayedColumns = ['reference', 'espece', 'coordonnees', 'precision', 'date'];
+  readonly loading = computed(() => this.search.loading());
+  readonly error = computed(() => (this.search.error() ? 'Impossible de charger la liste des arbres.' : null));
 
-  constructor(private readonly treeService: TreeService) {}
+  readonly crowns = computed(() =>
+    [...this.search.identifiedCrowns()].sort((a, b) =>
+      (lastReadingDate(b) ?? '').localeCompare(lastReadingDate(a) ?? ''),
+    ),
+  );
+
+  readonly displayedColumns = ['reference', 'espece', 'contour', 'plantation', 'coordonnees', 'precision', 'date'];
+
+  readonly bestAccuracy = bestAccuracy;
+  readonly lastReadingDate = lastReadingDate;
+  readonly plantingLabel = plantingLabel;
 
   ngOnInit(): void {
     this.refresh();
   }
 
   refresh(): void {
-    this.loading.set(true);
-    this.error.set(null);
-    this.treeService.list().subscribe({
-      next: (trees) => {
-        this.trees.set(trees);
-        this.loading.set(false);
-      },
-      error: () => {
-        this.error.set('Impossible de charger la liste des arbres.');
-        this.loading.set(false);
-      },
-    });
+    this.search.reload();
+  }
+
+  /** Ouvre l'arbre sur la carte, sélectionné (panneau de détail ouvert). */
+  showOnMap(crown: Crown): void {
+    this.search.selectCrown(crown);
+    this.router.navigate(['/']);
   }
 }

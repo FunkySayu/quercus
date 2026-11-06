@@ -1,7 +1,7 @@
 <div class="map-page">
   <div class="map-container" #mapContainer></div>
 
-  <div class="base-layer-picker" [class.base-layer-picker--beside-panel]="selectedTree()">
+  <div class="base-layer-picker" [class.base-layer-picker--beside-panel]="selectedCrown()">
     <button
       mat-flat-button
       type="button"
@@ -32,8 +32,8 @@
           <button mat-menu-item type="button" (click)="$event.stopPropagation(); toggleLidarOverlay()">
             <mat-icon>{{ lidarOverlayVisible() ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
             <span class="base-layer-option">
-              <span>Couronnes LiDAR</span>
-              <small>Expérimental · relevés rattachés</small>
+              <span>Rattachement GPS</span>
+              <small>Diagnostic · relevés bruts → couronnes</small>
             </span>
           </button>
         }
@@ -52,19 +52,33 @@
     </div>
   }
 
-  @if (selectedTree(); as tree) {
+  @if (selectedCrown(); as tree) {
     <div class="tree-panel" [class.tree-panel--expanded]="mobilePanelExpanded()">
       <div class="tree-panel-header">
         <div>
-          <h2>{{ treeTitle(tree) }}</h2>
-          @if (treeSubtitle(tree)) {
-            <p class="tree-panel-subtitle">{{ treeSubtitle(tree) }}</p>
+          <h2>{{ crownTitle(tree) }}</h2>
+          @if (crownSubtitle(tree)) {
+            <p class="tree-panel-subtitle">{{ crownSubtitle(tree) }}</p>
           }
         </div>
-        <button mat-stroked-button type="button" (click)="closePanel()">
-          <mat-icon>close</mat-icon>
-          Fermer
-        </button>
+        <div class="tree-panel-actions">
+          @if (canEdit() && canHide(tree)) {
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="hiding()"
+              [matTooltip]="tree.hidden ? 'Restaurer la couronne' : 'Ne plus suivre cette couronne'"
+              [attr.aria-label]="tree.hidden ? 'Restaurer la couronne' : 'Ne plus suivre cette couronne'"
+              (click)="toggleHidden(tree)"
+            >
+              <mat-icon>{{ tree.hidden ? 'restore_from_trash' : 'delete' }}</mat-icon>
+            </button>
+          }
+          <button mat-stroked-button type="button" (click)="closePanel()">
+            <mat-icon>close</mat-icon>
+            Fermer
+          </button>
+        </div>
       </div>
 
       <button mat-button type="button" class="tree-panel-mobile-toggle" (click)="toggleMobilePanel()">
@@ -127,7 +141,9 @@
         <p class="tree-panel-description">{{ paragraph }}</p>
       }
 
-      <hr />
+      @if (isIdentified(tree)) {
+        <hr />
+      }
 
       <dl class="tree-panel-details">
         @if (tree.reference) {
@@ -135,11 +151,37 @@
           <dd>{{ tree.reference }}</dd>
         }
 
-        <dt>Précision GPS</dt>
-        <dd>±{{ tree.accuracy | number: '1.0-0' }} m</dd>
+        <dt>Contour</dt>
+        <dd>
+          @if (tree.source === 'lidar') {
+            Couronne LiDAR n° {{ tree.crown_id }}
+          } @else {
+            Position GPS (aucune couronne LiDAR rattachée)
+          }
+        </dd>
 
-        <dt>Saisi le</dt>
-        <dd>{{ tree.created_at | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        @if (tree.height_m !== null) {
+          <dt>Hauteur</dt>
+          <dd>{{ tree.height_m | number: '1.0-1' }} m</dd>
+        }
+        @if (tree.source === 'lidar' && tree.diameter_m !== null) {
+          <dt>Diamètre</dt>
+          <dd>{{ tree.diameter_m | number: '1.0-1' }} m</dd>
+        }
+        @if (plantingLabel(tree); as planting) {
+          <dt>Plantation</dt>
+          <dd>{{ planting }} (estimation)</dd>
+        }
+
+        @for (reading of tree.readings; track reading.id) {
+          <dt>{{ tree.readings.length > 1 ? 'Relevé ' + ($index + 1) : 'Relevé' }}</dt>
+          <dd>
+            {{ reading.created_at | date: 'dd/MM/yyyy HH:mm' }} · ±{{ reading.accuracy | number: '1.0-0' }} m
+            @if (reading.dist_to_top_m !== null && reading.match !== 'unmatched') {
+              · {{ reading.dist_to_top_m | number: '1.0-1' }} m du sommet
+            }
+          </dd>
+        }
       </dl>
 
       @if (canNavigate()) {

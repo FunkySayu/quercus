@@ -1,21 +1,17 @@
-import os
-from pathlib import Path
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-from .. import storage
+from .. import crowns
 
-# Fichiers produits hors-ligne par tools/lidar_crowns.py (couronnes LiDAR + rattachement
-# des relevés) : lidar_crowns.geojson / lidar_readings.geojson, par défaut à côté de
-# trees.csv dans le volume de données.
-LIDAR_DIR = Path(os.environ.get("LIDAR_DIR", storage.CSV_PATH.parent))
+# Fichiers bruts produits hors-ligne par tools/lidar_crowns.py (couronnes LiDAR +
+# rattachement des relevés), servis tels quels. L'UI s'appuie sur /api/crowns (fusion
+# couronnes + relevés, voir app/crowns.py) ; /readings sert au calque de diagnostic.
 
 router = APIRouter(prefix="/api/lidar", tags=["lidar"])
 
 
 def _serve(name: str) -> FileResponse:
-    path = LIDAR_DIR / f"lidar_{name}.geojson"
+    path = crowns.lidar_path(name)
     if not path.is_file():
         raise HTTPException(
             status_code=404,
@@ -26,7 +22,7 @@ def _serve(name: str) -> FileResponse:
 
 
 @router.get("/crowns")
-def crowns() -> FileResponse:
+def crowns_file() -> FileResponse:
     return _serve("crowns")
 
 

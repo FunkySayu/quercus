@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 from urllib.parse import urlparse
@@ -7,16 +8,37 @@ import jwt
 from fastapi import HTTPException, Request
 from jwt import PyJWKClient
 
-AUTHENTIK_ISSUER = os.environ["AUTHENTIK_ISSUER"].rstrip("/")
-AUTHENTIK_CLIENT_ID = os.environ["AUTHENTIK_CLIENT_ID"]
-AUTHENTIK_CLIENT_SECRET = os.environ["AUTHENTIK_CLIENT_SECRET"]
+# Mode développement (AUTH_DEV_MODE=1, à ne JAMAIS activer en production) : pas
+# d'Authentik, "Connexion" pose simplement un cookie de session local reconnu comme
+# un utilisateur fictif (voir routers/auth.py). Absent ou vide : comportement normal.
+DEV_AUTH = os.environ.get("AUTH_DEV_MODE", "").strip().lower() in ("1", "true", "yes")
+DEV_SESSION_TOKEN = "dev-session"
+DEV_USER = {"email": "dev@localhost", "name": "Mode dev"}
+
+if DEV_AUTH:
+    logging.getLogger("uvicorn.error").warning(
+        "AUTH_DEV_MODE actif : authentification factice, n'importe qui peut se connecter."
+    )
+
+
+def _setting(name: str) -> str:
+    # Les réglages Authentik ne sont obligatoires qu'hors mode dev.
+    return os.environ.get(name, "") if DEV_AUTH else os.environ[name]
+
+
+AUTHENTIK_ISSUER = _setting("AUTHENTIK_ISSUER").rstrip("/")
+AUTHENTIK_CLIENT_ID = _setting("AUTHENTIK_CLIENT_ID")
+AUTHENTIK_CLIENT_SECRET = _setting("AUTHENTIK_CLIENT_SECRET")
 # URL absolue et statique (pas dérivée de la requête, pour éviter les
 # ambiguïtés de schéma http/https derrière le reverse proxy nginx) —
 # doit être exactement celle enregistrée comme redirect URI dans Authentik.
-AUTHENTIK_REDIRECT_URI = os.environ["AUTHENTIK_REDIRECT_URI"]
+AUTHENTIK_REDIRECT_URI = _setting("AUTHENTIK_REDIRECT_URI")
 
-_redirect_parts = urlparse(AUTHENTIK_REDIRECT_URI)
-SITE_ROOT = f"{_redirect_parts.scheme}://{_redirect_parts.netloc}/"
+if DEV_AUTH:
+    SITE_ROOT = "/"
+else:
+    _redirect_parts = urlparse(AUTHENTIK_REDIRECT_URI)
+    SITE_ROOT = f"{_redirect_parts.scheme}://{_redirect_parts.netloc}/"
 
 SESSION_COOKIE = "session"
 STATE_COOKIE = "oauth_state"
@@ -47,6 +69,11 @@ async def _get_jwk_client() -> PyJWKClient:
 
 async def decode_id_token(token: str) -> dict:
     """Vérifie la signature, l'audience, l'émetteur et l'expiration d'un id_token."""
+    if DEV_AUTH:
+        # En mode dev, seul le cookie factice est accepté (aucun vrai jeton Authentik).
+        if token == DEV_SESSION_TOKEN:
+            return dict(DEV_USER)
+        raise ValueError("Session de développement invalide.")
     discovery = await get_discovery()
     jwk_client = await _get_jwk_client()
     try:
@@ -71,3 +98,14 @@ async def require_user(request: Request) -> dict:
         return await decode_id_token(token)
     except ValueError:
         raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
+
+
+async def optional_user(request: Request) -> Optional[dict]:
+    """Dependency FastAPI : l'utilisateur connecté, ou None (sans lever d'erreur)."""
+    token = request.cookies.get(SESSION_COOKIE)
+    if not token:
+        return None
+    try:
+        return await decode_id_token(token)
+    except ValueError:
+        return None

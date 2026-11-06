@@ -102,6 +102,13 @@
   }
 }
 
+.tree-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
 .tree-panel-subtitle {
   margin: 4px 0 0;
   color: rgba(0, 0, 0, 0.6);

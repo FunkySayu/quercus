@@ -8,7 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { GeolocationService } from './services/geolocation.service';
-import { TreeSearchService } from './services/tree-search.service';
+import { CrownSearchService } from './services/crown-search.service';
 import { AuthService } from './services/auth.service';
 
 @Component({
@@ -30,7 +30,7 @@ import { AuthService } from './services/auth.service';
   styleUrl: './app.component.scss',
 })
 export class AppComponent implements OnInit, OnDestroy {
-  protected readonly search = inject(TreeSearchService);
+  protected readonly search = inject(CrownSearchService);
   protected readonly auth = inject(AuthService);
 
   constructor(private readonly geolocationService: GeolocationService) {}

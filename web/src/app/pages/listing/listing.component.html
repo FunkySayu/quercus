@@ -13,25 +13,25 @@
     </div>
   } @else if (error()) {
     <div class="status-row error">{{ error() }}</div>
-  } @else if (trees().length === 0) {
+  } @else if (crowns().length === 0) {
     <div class="status-row">Aucun arbre enregistré pour le moment.</div>
   } @else {
-    <table mat-table [dataSource]="trees()" class="mat-elevation-z1">
+    <table mat-table [dataSource]="crowns()" class="mat-elevation-z1">
       <ng-container matColumnDef="reference">
         <th mat-header-cell *matHeaderCellDef>Référence</th>
-        <td mat-cell *matCellDef="let tree">{{ tree.reference || '—' }}</td>
+        <td mat-cell *matCellDef="let crown">{{ crown.reference || '—' }}</td>
       </ng-container>
 
       <ng-container matColumnDef="espece">
         <th mat-header-cell *matHeaderCellDef>Espèce</th>
-        <td mat-cell *matCellDef="let tree">
-          @if (tree.nom_usage || tree.nom_scientifique || tree.name) {
-            @if (tree.wikipedia_url) {
-              <a [href]="tree.wikipedia_url" target="_blank" rel="noopener">
-                {{ tree.nom_usage || tree.nom_scientifique || tree.name }}
+        <td mat-cell *matCellDef="let crown">
+          @if (crown.nom_usage || crown.nom_scientifique || crown.name) {
+            @if (crown.wikipedia_url) {
+              <a [href]="crown.wikipedia_url" target="_blank" rel="noopener" (click)="$event.stopPropagation()">
+                {{ crown.nom_usage || crown.nom_scientifique || crown.name }}
               </a>
             } @else {
-              {{ tree.nom_usage || tree.nom_scientifique || tree.name }}
+              {{ crown.nom_usage || crown.nom_scientifique || crown.name }}
             }
           } @else {
             —
@@ -39,25 +39,48 @@
         </td>
       </ng-container>
 
+      <ng-container matColumnDef="contour">
+        <th mat-header-cell *matHeaderCellDef>Contour</th>
+        <td mat-cell *matCellDef="let crown">
+          @if (crown.source === 'lidar') {
+            Couronne LiDAR · {{ crown.height_m | number: '1.0-0' }} m
+          } @else {
+            GPS seul
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="plantation">
+        <th mat-header-cell *matHeaderCellDef>Plantation</th>
+        <td mat-cell *matCellDef="let crown">{{ plantingLabel(crown) || '—' }}</td>
+      </ng-container>
+
       <ng-container matColumnDef="coordonnees">
         <th mat-header-cell *matHeaderCellDef>Coordonnées</th>
-        <td mat-cell *matCellDef="let tree">
-          {{ tree.latitude | number: '1.6-6' }}, {{ tree.longitude | number: '1.6-6' }}
+        <td mat-cell *matCellDef="let crown">
+          @if (crown.top) {
+            {{ crown.top[1] | number: '1.6-6' }}, {{ crown.top[0] | number: '1.6-6' }}
+          }
         </td>
       </ng-container>
 
       <ng-container matColumnDef="precision">
         <th mat-header-cell *matHeaderCellDef>Précision</th>
-        <td mat-cell *matCellDef="let tree">±{{ tree.accuracy | number: '1.0-0' }} m</td>
+        <td mat-cell *matCellDef="let crown">
+          ±{{ bestAccuracy(crown) | number: '1.0-0' }} m
+          @if (crown.readings.length > 1) {
+            <small>({{ crown.readings.length }} relevés)</small>
+          }
+        </td>
       </ng-container>
 
       <ng-container matColumnDef="date">
         <th mat-header-cell *matHeaderCellDef>Date de saisie</th>
-        <td mat-cell *matCellDef="let tree">{{ tree.created_at | date: 'dd/MM/yyyy HH:mm' }}</td>
+        <td mat-cell *matCellDef="let crown">{{ lastReadingDate(crown) | date: 'dd/MM/yyyy HH:mm' }}</td>
       </ng-container>
 
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      <tr mat-row class="listing-row" *matRowDef="let row; columns: displayedColumns" (click)="showOnMap(row)"></tr>
     </table>
   }
 </div>

@@ -13,6 +13,7 @@ from .. import auth
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 STATE_MAX_AGE = 600  # durée de vie du cookie state/nonce pendant l'aller-retour Authentik
+DEV_SESSION_MAX_AGE = 30 * 24 * 3600
 
 
 def _safe_next_path(next_path: str | None) -> str:
@@ -24,6 +25,18 @@ def _safe_next_path(next_path: str | None) -> str:
 
 @router.get("/login")
 async def login(request: Request, next: str = "/") -> RedirectResponse:
+    if auth.DEV_AUTH:
+        # Mode dev : "se connecter" = poser le cookie factice, sans passer par Authentik.
+        # Non `secure`, pour fonctionner en http (localhost ou téléphone sur le réseau local).
+        response = RedirectResponse(_safe_next_path(next))
+        response.set_cookie(
+            auth.SESSION_COOKIE,
+            auth.DEV_SESSION_TOKEN,
+            max_age=DEV_SESSION_MAX_AGE,
+            httponly=True,
+            samesite="lax",
+        )
+        return response
     discovery = await auth.get_discovery()
     state_token = secrets.token_urlsafe(24)
     nonce = secrets.token_urlsafe(24)
@@ -54,6 +67,8 @@ async def callback(
     state: str | None = None,
     error: str | None = None,
 ) -> RedirectResponse:
+    if auth.DEV_AUTH:
+        raise HTTPException(status_code=404, detail="Pas de callback OAuth en mode dev.")
     if error or not code or not state:
         raise HTTPException(status_code=400, detail=f"Authentification échouée : {error or 'paramètres manquants'}")
 
@@ -106,6 +121,10 @@ async def callback(
 
 @router.get("/logout")
 async def logout(request: Request) -> RedirectResponse:
+    if auth.DEV_AUTH:
+        response = RedirectResponse(auth.SITE_ROOT)
+        response.delete_cookie(auth.SESSION_COOKIE)
+        return response
     discovery = await auth.get_discovery()
     id_token = request.cookies.get(auth.SESSION_COOKIE)
     end_session_endpoint = discovery.get("end_session_endpoint")

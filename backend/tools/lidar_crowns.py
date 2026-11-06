@@ -30,6 +30,8 @@ Pipeline (segmentation classique sur MNH, cf. lidR lmf + Dalponte 2016) :
      Propriétés `planted_after` / `planted_by` : intervalle entre le dernier millésime
      sans l'arbre et le premier où il apparaît. Les images sont mises en cache
      (`--cache`, défaut data/aerial_cache/) : seul le premier lancement les télécharge.
+  7. Couronnes masquées depuis l'app (`hidden`) reportées depuis l'ancien fichier
+     (par position du sommet, les numéros n'étant pas stables) : voir carry_over_hidden.
 
 Usage (depuis backend/) :
   python -m venv .venv-tools && .venv-tools/bin/pip install -r tools/requirements.txt
@@ -411,6 +413,46 @@ def build_geojson(grid: Grid, chm_raw, labels, tops_r, tops_c, readings, meta):
     )
 
 
+HIDDEN_KEYS = ("hidden", "hidden_by", "hidden_at")
+
+
+def _point_in_ring(lon: float, lat: float, ring: list) -> bool:
+    inside = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
+        if (y1 > lat) != (y2 > lat) and lon < x1 + (lat - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
+def carry_over_hidden(previous: Path, crowns_fc: dict) -> int:
+    """Reporte les couronnes masquées depuis l'app (`hidden`, voir backend app/crowns.py).
+
+    Les numéros de couronne ne sont pas stables d'un lancement à l'autre : une nouvelle
+    couronne hérite du marqueur si son sommet tombe dans une couronne masquée de
+    l'ancien fichier. Renvoie le nombre de couronnes masquées dans le nouveau fichier.
+    """
+    try:
+        old = json.loads(previous.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0
+    hidden = []
+    for feature in old.get("features", []):
+        props = feature.get("properties") or {}
+        if props.get("hidden") and feature.get("geometry", {}).get("type") == "Polygon":
+            ring = feature["geometry"]["coordinates"][0]
+            xs, ys = [p[0] for p in ring], [p[1] for p in ring]
+            hidden.append(((min(xs), min(ys), max(xs), max(ys)), ring, props))
+    count = 0
+    for feature in crowns_fc["features"]:
+        lon, lat = feature["properties"]["top"]
+        for (x0, y0, x1, y1), ring, props in hidden:
+            if x0 <= lon <= x1 and y0 <= lat <= y1 and _point_in_ring(lon, lat, ring):
+                feature["properties"].update({k: props[k] for k in HIDDEN_KEYS if k in props})
+                count += 1
+                break
+    return count
+
+
 def write_json(path: Path, data: dict) -> None:
     # Écriture atomique : le backend peut servir le fichier pendant la régénération.
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -477,6 +519,7 @@ def main() -> None:
 
     out = args.out or args.trees.parent
     out.mkdir(parents=True, exist_ok=True)
+    n_hidden = carry_over_hidden(out / "lidar_crowns.geojson", crowns_fc)
     write_json(out / "lidar_crowns.geojson", crowns_fc)
     write_json(out / "lidar_readings.geojson", readings_fc)
 
@@ -486,6 +529,8 @@ def main() -> None:
     if not args.no_history:
         dated = sum(1 for f in crowns_fc["features"] if f["properties"].get("planted_by"))
         print(f"Année de plantation estimée pour {dated}/{len(crowns_fc['features'])} couronnes")
+    if n_hidden:
+        print(f"{n_hidden} couronnes masquées reportées depuis le fichier précédent")
     print(f"Écrit dans {out}")
 
 
