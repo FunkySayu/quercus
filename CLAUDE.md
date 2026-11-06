@@ -14,7 +14,7 @@ Wikipédia, description, continent) affichées sur la carte et dans la
 liste, sans avoir à ressaisir cette information à chaque arbre planté.
 Le continent (`Europe`, `Amérique du Nord`, `Mexique`, `Asie`, vide si
 inconnu/non identifié) sert notamment à colorer les couronnes de la carte
-(voir `home.component.ts`).
+(voir `web/src/pages/home/crown-style.ts`).
 
 L'unité affichée par l'UI est la **couronne**, pas le relevé : chaque arbre
 est un polygone, sa couronne LiDAR quand un relevé y est rattaché, sinon un
@@ -34,8 +34,8 @@ Deux services derrière Docker Compose (`docker-compose.yml`), qui tire les
 images `ghcr.io/funkysayu/quercus-{backend,web}` publiées par
 `.github/workflows/docker-publish.yml` (push sur `main` / tags `v*`) :
 
-- **`web/`** — Angular 17 (standalone components, signals), Angular
-  Material, Leaflet pour la carte. Buildé en statique et servi par nginx
+- **`web/`** — React 19 + TypeScript (Vite), Tailwind CSS, zustand pour
+  l'état partagé, react-router, Leaflet pour la carte. Buildé en statique et servi par nginx
   (`web/Dockerfile`, `web/nginx.conf`), qui reverse-proxy `/api/` vers le
   backend.
 - **`backend/`** — FastAPI (Python), stockage en fichiers CSV plats (pas
@@ -119,29 +119,38 @@ deux fois.
   `--no-history` pour sauter) : fiable à l'échelle d'un îlot, ±1 millésime
   à l'arbre près, null pour ~27 % des couronnes jamais détectées durablement.
 
-### Frontend (`web/src/app/`)
+### Frontend (`web/src/`)
 
-Routes (`app.routes.ts`), toutes en lazy-loading standalone :
-- `/` (`pages/home`) — carte Leaflet : un polygone par couronne
-  (`/api/crowns`), coloré par continent si identifié, contour discret sinon ;
-  clic → panneau de détail (fiche espèce + hauteur, plantation estimée,
-  relevés). Calque optionnel de diagnostic `lidar-overlay.ts` (relevés GPS
-  bruts → sommet de couronne).
-- `/saisie` (`pages/entry`) — formulaire de terrain : ping GPS continu
-  (`services/geolocation.service.ts`, démarré au bootstrap de l'app dans
-  `app.component.ts`) tant que la précision n'est pas suffisante
-  (< 10 m), puis deux champs (référence / nom) avec autocomplétion
-  Material sur le catalogue d'espèces (`services/species.service.ts`) —
-  sélectionner une suggestion synchronise les deux champs vers la même
-  fiche.
-- `/liste` (`pages/listing`) — tableau des arbres identifiés (une ligne par
-  couronne / cercle GPS) ; clic → ouvre l'arbre sur la carte.
+`npm start` lance Vite (proxy `/api` → `localhost:8000`, voir
+`vite.config.ts`) ; `npm run build` type-check puis builde dans `dist/`.
 
-`services/crown-search.service.ts` porte l'état partagé (couronnes chargées,
-recherche de la toolbar, sélection) entre carte, liste et toolbar.
-`services/crown.service.ts`, `tree.service.ts` (saisie) et
-`species.service.ts` sont de simples wrappers HTTP vers `/api/crowns`,
-`/api/trees` et `/api/species`.
+Routes (`App.tsx`, avec la toolbar et la garde `RequireAuth` de `/saisie`),
+pages chargées en lazy-loading :
+- `/` (`pages/home/HomePage.tsx`) — carte Leaflet pilotée impérativement
+  (pas de react-leaflet) : un polygone par couronne (`/api/crowns`), coloré
+  par continent si identifié, contour discret sinon (`crown-style.ts`) ;
+  clic → panneau de détail `TreePanel.tsx` (fiche espèce + hauteur,
+  plantation estimée, relevés). Fonds de carte dans `base-layers.ts` /
+  `BaseLayerPicker.tsx` ; calque optionnel de diagnostic `lidar-overlay.ts`
+  (relevés GPS bruts → sommet de couronne).
+- `/saisie` (`pages/EntryPage.tsx`) — formulaire de terrain : ping GPS
+  continu (`stores/geolocation.ts`, démarré au montage de `App`) tant que la
+  précision n'est pas suffisante (< 10 m), puis deux champs (référence /
+  nom) avec autocomplétion sur le catalogue d'espèces (`listSpecies()` dans
+  `api.ts`) — sélectionner une suggestion synchronise les deux champs vers
+  la même fiche.
+- `/liste` (`pages/ListingPage.tsx`) — tableau des arbres identifiés (une
+  ligne par couronne / cercle GPS) ; clic → ouvre l'arbre sur la carte.
+
+État partagé en stores zustand (`stores/`) : `crowns.ts` porte les couronnes
+chargées, la recherche de la toolbar et la sélection (valeurs dérivées dans
+des hooks mémoïsés, `useSelectedCrown` etc. — jamais de tableau recalculé
+dans un sélecteur zustand, ça bouclerait) ; `auth.ts`, `geolocation.ts`,
+`toast.ts`. `api.ts` regroupe les wrappers `fetch` vers le backend.
+
+UI en Tailwind v4 (thème dans `index.css`, breakpoint `sm` à 600 px), sans
+bibliothèque de composants : autocomplétion, toasts, spinner, boutons dans
+`components/ui.tsx` ; icônes via la police Material Icons (`<Icon name>`).
 
 ## Points d'attention pour un futur changement
 

@@ -6,11 +6,11 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build -- --configuration production
+RUN npm run build
 
 FROM nginx:1.27-alpine
 
-COPY --from=build /app/dist/web /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

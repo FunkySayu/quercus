@@ -1,0 +1,27 @@
+@import 'leaflet/dist/leaflet.css';
+@import 'tailwindcss';
+
+@theme {
+  /* Indigo du thème Material d'origine (indigo-pink). */
+  --color-primary: #3f51b5;
+  --color-primary-dark: #303f9f;
+  --color-danger: #b3261e;
+  --color-ok: #2e7d32;
+  /* Bascule mobile à 600px, comme les media queries (max-width: 599px) d'avant. */
+  --breakpoint-sm: 600px;
+  --font-sans: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: #fafafa;
+    color: rgb(0 0 0 / 0.87);
+  }
+}

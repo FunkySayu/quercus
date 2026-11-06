@@ -1,8 +1,8 @@
 node_modules/
 dist/
-.angular/
 __pycache__/
 *.pyc
 *.DS_Store
 /data/
 .env
+*.tsbuildinfo
