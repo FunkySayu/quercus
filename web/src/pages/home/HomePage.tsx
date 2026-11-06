@@ -14,7 +14,7 @@ import {
 } from '../../stores/crowns';
 import { useGeolocation } from '../../stores/geolocation';
 import { showToast } from '../../stores/toast';
-import { BaseLayerPicker } from './BaseLayerPicker';
+import { BaseLayerTimeline } from './BaseLayerTimeline';
 import { MAP_MAX_ZOOM, findBaseLayer, loadStoredBaseLayer, storeBaseLayer } from './base-layers';
 import { type CrownState, compareReferences, crownStyle } from './crown-style';
 import { DIAGNOSTIC_PANE, loadLidarOverlay } from './lidar-overlay';
@@ -81,7 +81,7 @@ export default function HomePage() {
   const canEdit = useAuth((s) => s.authenticated === true);
   const [hiding, setHiding] = useState(false);
 
-  /** Fond de carte choisi dans le sélecteur en haut à droite (voir base-layers.ts). */
+  /** Fond de carte choisi dans la frise en bas de la carte (voir base-layers.ts). */
   const [baseLayerId, setBaseLayerId] = useState(loadStoredBaseLayer);
   /** Calque de diagnostic relevés GPS → couronnes : proposé seulement si le fichier existe. */
   const [lidarOverlayAvailable, setLidarOverlayAvailable] = useState(false);
@@ -307,7 +307,7 @@ export default function HomePage() {
     <div className="relative h-full">
       <div ref={containerRef} className="size-full" />
 
-      <BaseLayerPicker
+      <BaseLayerTimeline
         baseLayerId={baseLayerId}
         onSelect={selectBaseLayer}
         besidePanel={selectedCrown !== null}

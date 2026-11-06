@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
 
-// Fonds de carte proposés dans le sélecteur en haut à droite de la carte, en deux
+// Fonds de carte proposés dans la frise en bas de la carte (BaseLayerTimeline), en deux
 // groupes ("Photos" / "Technique") triés du plus récent au plus ancien.
 //
 // Les dates sont celles relevées AU QUERCITUM (le site de l'app) — elles varient
@@ -20,8 +20,10 @@ export interface BaseLayerOption {
   id: string;
   group: BaseLayerGroup;
   label: string;
-  /** Résolution / nature de la source. */
+  /** Source / nature de la prise de vue (affichée dans le menu). */
   hint: string;
+  /** Résolution au sol (« 20 cm »), null si non publiée. */
+  resolution: string | null;
   /** Date de prise de vue au quercitum (AAAA, AAAA-MM ou AAAA-MM-JJ), null si non publiée. */
   date: string | null;
   /** Date estimée (non publiée par la source) : affichée « ≈ », triée comme une vraie date. */
@@ -76,6 +78,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'PCRS 5 cm (Vienne)',
     hint: 'Syndicat Énergies Vienne, la plus nette',
+    resolution: '5 cm',
     // Date non publiée par le producteur (graphe PCRS ANCT : date_livraison nulle) ;
     // estimée à 2023 par comparaison visuelle avec les millésimes datés.
     date: '2023',
@@ -100,6 +103,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN Ortho-Express 2026',
     hint: 'Photo aérienne, mosaïque rapide',
+    resolution: '20 cm',
     date: '2026',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.RVB-EXPRESS.2026', 'PM_0_19'),
   },
@@ -108,6 +112,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'Satellite Esri 2025',
     hint: 'Vantor WorldView-2, 50 cm',
+    resolution: '50 cm',
     date: '2025-08-15',
     create: () => esriWayback(22869),
   },
@@ -116,6 +121,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'Satellite Esri 2023',
     hint: 'Maxar, 31 cm',
+    resolution: '31 cm',
     date: '2023-07-20',
     create: () => esriWayback(60013),
   },
@@ -124,6 +130,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2023',
     hint: 'Photo aérienne, 20 cm',
+    resolution: '20 cm',
     date: '2023-05-29',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2023', 'PM_6_19'),
   },
@@ -132,6 +139,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'Satellite Esri 2021',
     hint: 'Maxar, 50 cm',
+    resolution: '50 cm',
     date: '2021-09-01',
     create: () => esriWayback(16245),
   },
@@ -140,6 +148,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2020',
     hint: 'Photo aérienne, 20 cm',
+    resolution: '20 cm',
     date: '2020-07-18',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2020', 'PM_6_19'),
   },
@@ -148,6 +157,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2017',
     hint: 'Photo aérienne, automne',
+    resolution: '20 cm',
     date: '2017-10-14',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2017', 'PM_0_18'),
   },
@@ -156,6 +166,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'Satellite Esri 2016',
     hint: 'Maxar, 31 cm',
+    resolution: '31 cm',
     date: '2016-06-22',
     create: () => esriWayback(48376),
   },
@@ -164,6 +175,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'Satellite Esri 2015',
     hint: 'DigitalGlobe, 50 cm',
+    resolution: '50 cm',
     date: '2015-08-20',
     create: () => esriWayback(13045),
   },
@@ -172,6 +184,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2014',
     hint: 'Photo aérienne, 50 cm',
+    resolution: '50 cm',
     date: '2014-09-02',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2014', 'PM_0_18'),
   },
@@ -180,6 +193,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'Satellite Esri 2013',
     hint: 'DigitalGlobe, jeunes plantations visibles',
+    resolution: '50 cm (est)', // non publiée : estimée d'après les autres captures DigitalGlobe/Maxar
     date: '2013-10-24',
     create: () => esriWayback(6678),
   },
@@ -188,6 +202,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2011',
     hint: 'Photo aérienne, 50 cm',
+    resolution: '50 cm',
     date: '2011',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2011', 'PM_6_18'),
   },
@@ -196,6 +211,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2007',
     hint: 'Photo aérienne, 50 cm',
+    resolution: '50 cm',
     date: '2007-09-13',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2007', 'PM_6_18'),
   },
@@ -204,6 +220,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN BD ORTHO 2002',
     hint: 'Photo aérienne, 50 cm',
+    resolution: '50 cm',
     date: '2002-06-26',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS2002', 'PM_6_18'),
   },
@@ -212,6 +229,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN historique 1969',
     hint: 'Photo noir et blanc',
+    resolution: '50 cm',
     date: '1969-06-12',
     create: () =>
       ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.1965-1980', 'PM_3_18', { format: 'image/png', style: 'BDORTHOHISTORIQUE' }),
@@ -221,6 +239,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'photo',
     label: 'IGN historique 1958',
     hint: 'Photo noir et blanc',
+    resolution: '50 cm',
     date: '1958-06-14',
     create: () =>
       ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.1950-1965', 'PM_0_18', { format: 'image/png', style: 'BDORTHOHISTORIQUE' }),
@@ -232,6 +251,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'technique',
     label: 'Infrarouge 2026',
     hint: 'Végétation en rouge, Ortho-Express',
+    resolution: '20 cm',
     date: '2026',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC-EXPRESS.2026', 'PM_0_19'),
   },
@@ -240,6 +260,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'technique',
     label: 'Hauteur des arbres (LiDAR HD)',
     hint: 'Hors feuilles, sur photo 2023',
+    resolution: '50 cm',
     date: '2024-03-20',
     // Le MNH ombré seul est peu lisible : semi-transparent sur la photo aérienne.
     create: () =>
@@ -256,6 +277,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'technique',
     label: 'Infrarouge 2023',
     hint: 'Végétation en rouge, BD ORTHO',
+    resolution: '20 cm',
     date: '2023-05-29',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC.2023', 'PM_6_19'),
   },
@@ -264,6 +286,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'technique',
     label: 'Infrarouge 2020',
     hint: 'Végétation en rouge, BD ORTHO',
+    resolution: '20 cm',
     date: '2020-07-18',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC.2020', 'PM_6_19'),
   },
@@ -272,6 +295,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'technique',
     label: 'Infrarouge 2017',
     hint: 'Végétation en rouge, automne',
+    resolution: '20 cm',
     date: '2017-10-14',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC.2017', 'PM_6_18'),
   },
@@ -280,6 +304,7 @@ const OPTIONS: BaseLayerOption[] = [
     group: 'technique',
     label: 'Infrarouge 2014',
     hint: 'Végétation en rouge, BD ORTHO',
+    resolution: '50 cm',
     date: '2014-09-02',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC.2014', 'PM_6_18'),
   },
@@ -302,13 +327,13 @@ export const BASE_LAYER_OPTIONS: BaseLayerOption[] = BASE_LAYER_GROUPS.flatMap((
 
 export const DEFAULT_BASE_LAYER = 'ign-pcrs';
 
-/** "2023-05-29" → "29/05/2023", "2026" → "2026", estimée → "≈ 2023 (estimée)", null → "date non publiée". */
+/** "2023-05-29" → "29/05/2023", "2026" → "2026", estimée → "2023 (est)", null → "date non publiée". */
 export function formatLayerDate(option: Pick<BaseLayerOption, 'date' | 'dateEstimated'>): string {
   if (!option.date) {
     return 'date non publiée';
   }
   const formatted = option.date.split('-').reverse().join('/');
-  return option.dateEstimated ? `≈ ${formatted} (estimée)` : formatted;
+  return option.dateEstimated ? `${formatted} (est)` : formatted;
 }
 
 export function findBaseLayer(id: string): BaseLayerOption {

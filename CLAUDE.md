@@ -131,7 +131,7 @@ pages chargées en lazy-loading :
   par continent si identifié, contour discret sinon (`crown-style.ts`) ;
   clic → panneau de détail `TreePanel.tsx` (fiche espèce + hauteur,
   plantation estimée, relevés). Fonds de carte dans `base-layers.ts` /
-  `BaseLayerPicker.tsx` ; calque optionnel de diagnostic `lidar-overlay.ts`
+  `BaseLayerTimeline.tsx` (frise flottante en bas de la carte) ; calque optionnel de diagnostic `lidar-overlay.ts`
   (relevés GPS bruts → sommet de couronne).
 - `/saisie` (`pages/EntryPage.tsx`) — formulaire de terrain : ping GPS
   continu (`stores/geolocation.ts`, démarré au montage de `App`) tant que la
