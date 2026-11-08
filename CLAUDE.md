@@ -144,7 +144,7 @@ saisie, liste, calque de diagnostic « Rattachement GPS ») ; les pages secondai
   `BaseLayerTimeline.tsx` (frise flottante en bas de la carte) ; calque optionnel de diagnostic `lidar-overlay.ts`
   (relevés GPS bruts → sommet de couronne).
 - `/saisie` (`pages/EntryPage.tsx`) — formulaire de terrain : ping GPS
-  continu (`stores/geolocation.ts`, démarré au montage de `App`) tant que la
+  continu (`stores/geolocation.ts`, démarré au montage de `App`, sauf sur ordinateur) tant que la
   précision n'est pas suffisante (< 10 m), puis deux champs (référence /
   nom) avec autocomplétion sur le catalogue d'espèces (`listSpecies()` dans
   `api.ts`) — sélectionner une suggestion synchronise les deux champs vers

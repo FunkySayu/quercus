@@ -20,7 +20,7 @@ function loadStored(): ColorScheme {
   } catch {
     // Stockage indisponible (navigation privée…) : mode par défaut.
   }
-  return 'continent';
+  return 'species';
 }
 
 export const useColorScheme = create<{ scheme: ColorScheme }>()(() => ({ scheme: loadStored() }));

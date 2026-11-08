@@ -37,9 +37,18 @@ let running = false;
 let timeoutId: ReturnType<typeof setTimeout> | null = null;
 let lastGoodFix: GoodFix | null = null;
 
+/** Téléphone ou tablette (pointeur principal tactile) : sur ordinateur, ni GPS utile ni demande d'autorisation. */
+export function isFieldDevice(): boolean {
+  return window.matchMedia('(pointer: coarse)').matches;
+}
+
 /** Démarre la boucle de ping GPS. Sans effet si déjà démarrée. Pensé pour tourner tant que l'app est ouverte. */
 export function startGeolocation(): void {
   if (running) {
+    return;
+  }
+  if (!isFieldDevice()) {
+    useGeolocation.setState({ currentError: "La saisie GPS n'est disponible que sur téléphone ou tablette." });
     return;
   }
   running = true;

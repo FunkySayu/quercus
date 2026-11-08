@@ -17,6 +17,8 @@ interface LegendEntry {
   /** Clic : sélectionne un arbre de cette fiche (mode « Espèce »). */
   crown?: Crown;
   italic?: boolean;
+  /** Continent d'origine, affiché devant le compteur (mode « Espèce »). */
+  continent?: string | null;
 }
 
 function legendEntries(crowns: Crown[], coloring: CrownColoring): LegendEntry[] {
@@ -56,10 +58,13 @@ function legendEntries(crowns: Crown[], coloring: CrownColoring): LegendEntry[] 
             count: 1,
             crown,
             italic: true,
+            continent: crown.continent,
           });
         }
       }
-      return Array.from(byReference.values()).sort((a, b) => compareReferences(a.key, b.key));
+      return Array.from(byReference.values()).sort(
+        (a, b) => a.label.localeCompare(b.label, 'fr') || compareReferences(a.key, b.key),
+      );
     }
     case 'planting': {
       const visible = crowns.filter((crown) => !crown.hidden);
@@ -92,6 +97,8 @@ export function ColorSchemeControl({ crowns, coloring }: { crowns: Crown[]; colo
 
   const current = COLOR_SCHEMES.find((scheme) => scheme.id === coloring.scheme)!;
   const entries = useMemo(() => legendEntries(crowns, coloring), [crowns, coloring]);
+  // Colonne du compteur à la largeur du plus grand nombre : ce qui la précède reste aligné.
+  const countWidth = `${String(Math.max(0, ...entries.map((entry) => entry.count))).length}ch`;
 
   const itemClass =
     'flex w-full cursor-pointer items-center gap-2 rounded-[10px] px-2 py-1.5 text-left ' +
@@ -165,7 +172,7 @@ export function ColorSchemeControl({ crowns, coloring }: { crowns: Crown[]; colo
       {legendOpen && !menuOpen && entries.length > 0 && (
         <ul
           aria-label={`Légende : ${current.label}`}
-          className={`max-h-[min(320px,calc(100vh-200px))] w-[220px] overflow-y-auto rounded-xl p-1 text-xs ${GLASS}`}
+          className={`max-h-[min(320px,calc(100vh-200px))] max-w-full overflow-y-auto rounded-xl p-1 text-xs ${coloring.scheme === 'species' ? 'w-[300px]' : 'w-[220px]'} ${GLASS}`}
         >
           {entries.map((entry) => {
             const content = (
@@ -176,7 +183,10 @@ export function ColorSchemeControl({ crowns, coloring }: { crowns: Crown[]; colo
                   style={entry.color ? { backgroundColor: entry.color } : { boxShadow: 'inset 0 0 0 1.5px #fff' }}
                 />
                 <span className={`min-w-0 flex-1 truncate ${entry.italic ? 'italic' : ''}`}>{entry.label}</span>
-                <span className="shrink-0 text-[10px] text-black/45 tabular-nums">{entry.count}</span>
+                {entry.continent && <span className="shrink-0 text-[10px] text-black/45">({entry.continent})</span>}
+                <span className="shrink-0 text-right text-[10px] text-black/45 tabular-nums" style={{ width: countWidth }}>
+                  {entry.count}
+                </span>
               </>
             );
             const rowClass = 'flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left';

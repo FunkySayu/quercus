@@ -145,6 +145,16 @@ export function crownStyle(crown: Crown, state: CrownState, coloring: CrownColor
   };
 }
 
+/** Survol : contour plus épais et opaque, remplissage renforcé, quel que soit l'état de base. */
+export function crownHoverStyle(style: L.PathOptions): L.PathOptions {
+  return {
+    ...style,
+    weight: (style.weight ?? 1) + 1,
+    opacity: 1,
+    fillOpacity: Math.min(1, (style.fillOpacity ?? 0) + 0.2),
+  };
+}
+
 /** Reproduit le tri des références du catalogue (voir `storage._species_sort_key`
  * côté backend) : numérique puis Bis avant Ter, pour que Précédent/Suivant suivent
  * l'ordre du quercitum plutôt qu'un tri alphabétique brut ("10" avant "9"). */

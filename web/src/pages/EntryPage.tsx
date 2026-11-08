@@ -3,7 +3,7 @@ import { api, listSpecies } from '../api';
 import { Autocomplete, type AutocompleteOption, BackToMap, buttonClass, Icon, Spinner } from '../components/ui';
 import { formatNumber } from '../format';
 import type { Species } from '../models/species';
-import { PING_INTERVAL_MS, useGeolocation } from '../stores/geolocation';
+import { PING_INTERVAL_MS, isFieldDevice, useGeolocation } from '../stores/geolocation';
 import { showToast } from '../stores/toast';
 
 const MAX_AUTOCOMPLETE_OPTIONS = 20;
@@ -180,11 +180,11 @@ export default function EntryPage() {
             <Status icon="check_circle" className="text-ok">
               Précision suffisante, vous pouvez enregistrer.
             </Status>
-          ) : (
+          ) : isFieldDevice() ? (
             <Status icon="hourglass_empty" className="text-black/60">
               En attente d'une précision inférieure à 10 m…
             </Status>
-          )}
+          ) : null}
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>

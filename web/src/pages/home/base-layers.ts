@@ -325,7 +325,8 @@ export const BASE_LAYER_GROUPS: { group: BaseLayerGroup; label: string; options:
 
 export const BASE_LAYER_OPTIONS: BaseLayerOption[] = BASE_LAYER_GROUPS.flatMap((g) => g.options);
 
-export const DEFAULT_BASE_LAYER = 'ign-pcrs';
+/** Par défaut, la photo datée la plus récente. */
+export const DEFAULT_BASE_LAYER = BASE_LAYER_GROUPS[0].options.find((option) => option.date)!.id;
 
 /** "2023-05-29" → "29/05/2023", "2026" → "2026", estimée → "2023 (est)", null → "date non publiée". */
 export function formatLayerDate(option: Pick<BaseLayerOption, 'date' | 'dateEstimated'>): string {

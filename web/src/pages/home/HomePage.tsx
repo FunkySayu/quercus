@@ -20,7 +20,14 @@ import { showToast } from '../../stores/toast';
 import { BaseLayerTimeline } from './BaseLayerTimeline';
 import { MAP_MAX_ZOOM, findBaseLayer, loadStoredBaseLayer, storeBaseLayer } from './base-layers';
 import { ColorSchemeControl } from './ColorSchemeControl';
-import { type CrownColoring, type CrownState, buildPlantingClasses, compareReferences, crownStyle } from './crown-style';
+import {
+  type CrownColoring,
+  type CrownState,
+  buildPlantingClasses,
+  compareReferences,
+  crownHoverStyle,
+  crownStyle,
+} from './crown-style';
 import { EditToolbar } from './EditToolbar';
 import { DIAGNOSTIC_PANE, loadLidarOverlay } from './lidar-overlay';
 import { TreePanel } from './TreePanel';
@@ -35,11 +42,30 @@ interface MapHandles {
   crownsLayer: L.GeoJSON | null;
   pathsByCrownId: Map<string, L.Path>;
   crownsById: Map<string, Crown>;
+  hoveredCrownId: string | null;
   userLocationMarker: L.CircleMarker | null;
   lidarOverlay: L.Layer | null;
   /** Recadrage fait une seule fois par visite de la carte : les redessins suivants
    * (rechargement, couronne masquée) ne doivent pas faire sauter la vue. */
   framed: boolean;
+}
+
+function crownState(crown: Crown, selected: Crown | null): CrownState {
+  if (!selected) {
+    return 'normal';
+  }
+  if (crown.id === selected.id) {
+    return 'selected';
+  }
+  return isIdentified(selected) && isIdentified(crown) && crown.reference === selected.reference
+    ? 'normal'
+    : 'lowlight';
+}
+
+/** Style d'une couronne, survol compris. */
+function displayedStyle(handles: MapHandles, crown: Crown, state: CrownState, coloring: CrownColoring): L.PathOptions {
+  const style = crownStyle(crown, state, coloring);
+  return crown.id === handles.hoveredCrownId ? crownHoverStyle(style) : style;
 }
 
 /** Met en avant la couronne sélectionnée et celles de la même fiche, estompe les autres. */
@@ -49,15 +75,8 @@ function applyHighlight(handles: MapHandles, selected: Crown | null, coloring: C
     if (!crown) {
       return;
     }
-    let state: CrownState = 'normal';
-    if (selected) {
-      if (crown.id === selected.id) {
-        state = 'selected';
-      } else if (!(isIdentified(selected) && isIdentified(crown) && crown.reference === selected.reference)) {
-        state = 'lowlight';
-      }
-    }
-    path.setStyle(crownStyle(crown, state, coloring));
+    const state = crownState(crown, selected);
+    path.setStyle(displayedStyle(handles, crown, state, coloring));
     // Seule une fiche passe au premier plan : une couronne non identifiée remontée
     // masquerait ensuite les cercles GPS posés dessus.
     if (state === 'selected' && isIdentified(crown)) {
@@ -286,6 +305,7 @@ export default function HomePage() {
       crownsLayer: null,
       pathsByCrownId: new Map(),
       crownsById: new Map(),
+      hoveredCrownId: null,
       userLocationMarker: null,
       lidarOverlay: null,
       framed: false,
@@ -326,6 +346,10 @@ export default function HomePage() {
     handles.crownsLayer?.remove();
     handles.pathsByCrownId.clear();
     handles.crownsById.clear();
+    // Un tracé retiré sous le curseur ne reçoit jamais son `mouseout`.
+    handles.hoveredCrownId = null;
+    // Au toucher, le navigateur simule un survol qui resterait collé après le tap.
+    const canHover = window.matchMedia('(hover: hover)').matches;
 
     // Couronnes non identifiées d'abord : les fiches sont dessinées par-dessus et
     // restent cliquables là où un cercle GPS recouvre une couronne.
@@ -339,6 +363,15 @@ export default function HomePage() {
         const crown = feature.properties as Crown;
         const path = layer as L.Path;
         path.on('click', () => onCrownClick(crown));
+        if (canHover) {
+          const setHovered = (hovered: boolean) => {
+            handles.hoveredCrownId = hovered ? crown.id : null;
+            const state = crownState(crown, selectedRef.current);
+            path.setStyle(displayedStyle(handles, crown, state, coloringRef.current));
+          };
+          path.on('mouseover', () => setHovered(true));
+          path.on('mouseout', () => setHovered(false));
+        }
         handles.pathsByCrownId.set(crown.id, path);
         handles.crownsById.set(crown.id, crown);
         if (isIdentified(crown)) {
