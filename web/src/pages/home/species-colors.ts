@@ -95,12 +95,9 @@ function hashString(value: string): number {
   return Math.abs(hash);
 }
 
-/** Fiche « Quercus sp. (à identifier) » : pas une espèce, elle reste en gris neutre. */
-const PLACEHOLDER_REFERENCE = '0';
-
-/** Couleur de la fiche, ou null (pas de fiche, ou fiche « à identifier »). */
+/** Couleur de la fiche, ou null s'il n'y en a pas. */
 export function speciesColor(reference: string | null | undefined): string | null {
-  if (!reference || reference === PLACEHOLDER_REFERENCE) {
+  if (!reference) {
     return null;
   }
   return SPECIES_COLORS[reference] ?? FREE_COLORS[hashString(reference) % FREE_COLORS.length];

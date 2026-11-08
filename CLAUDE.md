@@ -164,6 +164,9 @@ bibliothèque de composants : autocomplétion, toasts, spinner, boutons dans
 
 ## Points d'attention pour un futur changement
 
+- La fiche `0` (« Quercus sp., à identifier ») et ses relevés restent dans
+  les CSV mais sont filtrés partout ailleurs (`storage.PLACEHOLDER_REFERENCE`,
+  `/api/lidar/readings`, `tools/lidar_crowns.py`).
 - `trees.csv` et `species.csv` sont des données réelles de terrain, pas
   des fixtures de test — toute modification manuelle doit être
   chirurgicale et justifiée (ex. rattacher une ligne orpheline à la bonne

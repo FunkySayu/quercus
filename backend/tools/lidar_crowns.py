@@ -281,6 +281,8 @@ def load_readings(trees_csv: Path, species_csv: Path | None) -> list[dict]:
     readings = []
     with trees_csv.open(encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
+            if row.get("reference", "").strip() == "0":
+                continue  # Fiche « à identifier » : conservée dans le CSV, ignorée partout ailleurs.
             try:
                 lon, lat, accuracy = float(row["longitude"]), float(row["latitude"]), float(row["accuracy"])
             except (KeyError, ValueError):
@@ -303,7 +305,7 @@ def match_readings(readings, grid: Grid, labels, tops_r, tops_c):
     groups: list[list[dict]] = []
     for rd in readings:
         for group in groups:
-            same_ref = group[0]["reference"] == rd["reference"] and rd["reference"] not in ("", "0")
+            same_ref = group[0]["reference"] == rd["reference"] and rd["reference"] != ""
             if same_ref and min(math.hypot(rd["x"] - o["x"], rd["y"] - o["y"]) for o in group) <= DUPLICATE_RADIUS:
                 group.append(rd)
                 break

@@ -29,6 +29,10 @@ SPECIES_FIELDNAMES = [
     "continent",
 ]
 
+# Fiche « Quercus sp. (à identifier) » : ses relevés et sa fiche restent dans les CSV
+# (données de terrain) mais ne sont jamais servis.
+PLACEHOLDER_REFERENCE = "0"
+
 _lock = threading.Lock()
 _species_lock = threading.Lock()
 
@@ -114,6 +118,8 @@ def list_trees() -> List[Tree]:
     trees = []
     for row in rows:
         reference = row["reference"] or None
+        if reference and reference.strip() == PLACEHOLDER_REFERENCE:
+            continue
         species = species_by_reference.get(reference.strip().lower()) if reference else None
         trees.append(
             Tree(
@@ -187,7 +193,8 @@ def _species_map() -> Dict[str, Species]:
 def list_species() -> List[Species]:
     with _species_lock:
         species_list = _read_species_unlocked()
-    return sorted(species_list, key=_species_sort_key)
+    visible = [species for species in species_list if species.reference.strip() != PLACEHOLDER_REFERENCE]
+    return sorted(visible, key=_species_sort_key)
 
 
 def get_or_create_species(reference: Optional[str], name: Optional[str]) -> Species:

@@ -4,7 +4,7 @@ import type { ColorScheme } from '../../stores/color-scheme';
 import { speciesColor } from './species-colors';
 
 // Couleurs moyennement saturées par continent d'origine, utilisées pour teinter
-// les couronnes identifiées. "Quercus sp." et les continents inconnus retombent sur le gris.
+// les couronnes identifiées. Les continents inconnus retombent sur le gris.
 export const CONTINENT_COLORS: Record<string, string> = {
   Europe: '#4C7EA8',
   'Amérique du Nord': '#5B9B5B',

@@ -86,6 +86,19 @@ def _load_geojson(path: Path) -> Optional[dict]:
     return data
 
 
+def visible_readings() -> Optional[dict]:
+    """lidar_readings.geojson sans les relevés de la fiche « à identifier », None s'il n'a pas été généré."""
+    data = _load_geojson(lidar_path("readings"))
+    if data is None:
+        return None
+    features = [
+        feature
+        for feature in data.get("features", [])
+        if (feature.get("properties") or {}).get("reference") != storage.PLACEHOLDER_REFERENCE
+    ]
+    return {**data, "features": features}
+
+
 def _write_geojson(path: Path, data: dict) -> None:
     # Écriture atomique, même format compact que tools/lidar_crowns.py.
     tmp = path.with_suffix(path.suffix + ".tmp")

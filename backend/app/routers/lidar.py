@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from .. import crowns
 
@@ -9,14 +9,13 @@ from .. import crowns
 
 router = APIRouter(prefix="/api/lidar", tags=["lidar"])
 
+_NOT_GENERATED = "Couronnes LiDAR non générées (lancer backend/tools/lidar_crowns.py)."
+
 
 def _serve(name: str) -> FileResponse:
     path = crowns.lidar_path(name)
     if not path.is_file():
-        raise HTTPException(
-            status_code=404,
-            detail="Couronnes LiDAR non générées (lancer backend/tools/lidar_crowns.py).",
-        )
+        raise HTTPException(status_code=404, detail=_NOT_GENERATED)
     # FileResponse pose ETag / Last-Modified : le navigateur revalide sans tout retélécharger.
     return FileResponse(path, media_type="application/geo+json")
 
@@ -27,5 +26,8 @@ def crowns_file() -> FileResponse:
 
 
 @router.get("/readings")
-def readings() -> FileResponse:
-    return _serve("readings")
+def readings() -> JSONResponse:
+    data = crowns.visible_readings()
+    if data is None:
+        raise HTTPException(status_code=404, detail=_NOT_GENERATED)
+    return JSONResponse(data, media_type="application/geo+json")
