@@ -312,6 +312,13 @@ export default function HomePage() {
     };
     handlesRef.current = handles;
 
+    // Clic hors de toute couronne : retire la sélection.
+    map.on('click', () => {
+      if (selectedRef.current) {
+        clearSearch();
+      }
+    });
+
     let cancelled = false;
     void loadLidarOverlay().then((layer) => {
       if (!cancelled) {
@@ -362,7 +369,11 @@ export default function HomePage() {
       onEachFeature: (feature, layer) => {
         const crown = feature.properties as Crown;
         const path = layer as L.Path;
-        path.on('click', () => onCrownClick(crown));
+        path.on('click', (event) => {
+          // Sinon le clic remonte à la carte, qui annulerait aussitôt la sélection.
+          L.DomEvent.stopPropagation(event);
+          onCrownClick(crown);
+        });
         if (canHover) {
           const setHovered = (hovered: boolean) => {
             handles.hoveredCrownId = hovered ? crown.id : null;
