@@ -141,7 +141,10 @@ saisie, liste, calque de diagnostic « Rattachement GPS ») ; les pages secondai
   estimée (rampe par intervalle, couronnes non identifiées comprises) ;
   clic → panneau de détail `TreePanel.tsx` (fiche espèce + hauteur,
   plantation estimée, relevés). Fonds de carte dans `base-layers.ts` /
-  `BaseLayerTimeline.tsx` (frise flottante en bas de la carte) ; calque optionnel de diagnostic `lidar-overlay.ts`
+  `BaseLayerTimeline.tsx` (frise flottante en bas de la carte) — dont un
+  fond « NDVI » calculé dans le navigateur à partir des tuiles IRC
+  (`ndvi-layer.ts` : canal R = PIR, canal V = rouge ; pseudo-NDVI 8 bits,
+  comparable au sein d'un millésime seulement) ; calque optionnel de diagnostic `lidar-overlay.ts`
   (relevés GPS bruts → sommet de couronne).
 - `/saisie` (`pages/EntryPage.tsx`) — formulaire de terrain : ping GPS
   continu (`stores/geolocation.ts`, démarré au montage de `App`, sauf sur ordinateur) tant que la
