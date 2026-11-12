@@ -1,4 +1,5 @@
 import * as L from 'leaflet';
+import { NdviTileLayer } from './ndvi-layer';
 
 // Fonds de carte proposés dans la frise en bas de la carte (BaseLayerTimeline), en deux
 // groupes ("Photos" / "Technique") triés du plus récent au plus ancien.
@@ -42,14 +43,15 @@ const ESRI_ATTRIBUTION =
 function ignWmts(
   layer: string,
   tileMatrixSet: string,
-  options: { format?: string; style?: string; opacity?: number } = {},
+  options: { format?: string; style?: string; opacity?: number; tileClass?: typeof L.TileLayer } = {},
 ): L.TileLayer {
   const [, minZoom, maxNativeZoom] = tileMatrixSet.split('_').map(Number);
   const url =
     'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0' +
     `&LAYER=${layer}&STYLE=${options.style ?? 'normal'}&FORMAT=${options.format ?? 'image/jpeg'}` +
     `&TILEMATRIXSET=${tileMatrixSet}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}`;
-  return L.tileLayer(url, {
+  const TileClass = options.tileClass ?? L.TileLayer;
+  return new TileClass(url, {
     attribution: IGN_ATTRIBUTION,
     minZoom,
     maxNativeZoom,
@@ -280,6 +282,17 @@ const OPTIONS: BaseLayerOption[] = [
     resolution: '20 cm',
     date: '2023-05-29',
     create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC.2023', 'PM_6_19'),
+  },
+  {
+    id: 'ign-ndvi-2023',
+    group: 'technique',
+    label: 'NDVI 2023',
+    hint: 'Vigueur végétale, brun → vert',
+    resolution: '20 cm',
+    date: '2023-05-29',
+    // Pseudo-NDVI recalculé tuile par tuile dans le navigateur (voir ndvi-layer.ts).
+    // Millésime retenu : feuillaison complète fin mai, mosaïque BD ORTHO définitive.
+    create: () => ignWmts('ORTHOIMAGERY.ORTHOPHOTOS.IRC.2023', 'PM_6_19', { tileClass: NdviTileLayer }),
   },
   {
     id: 'ign-irc-2020',
